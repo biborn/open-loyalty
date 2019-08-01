@@ -4,12 +4,13 @@ SERVICE ?=
 EXEC_ARGS ?=
 RUN_ARGS ?=
 BUILD_ARGS ?=
+TEST_ARGS ?=
 
-COMPOSE_FILE_ARGS ?= -f $(CURDIR)/docker/docker-compose.yml
+COMPOSE_FILE_ARGS ?= -f docker/docker-compose.yml
 
-DOCKER_COMPOSE_LOCAL = $(CURDIR)/docker/docker-compose.local.yml
+DOCKER_COMPOSE_LOCAL = docker/docker-compose.local.yml
 ifeq ($(shell test -f $(DOCKER_COMPOSE_LOCAL) && echo yes),yes)
-COMPOSE_FILE_ARGS := $(COMPOSE_FILE_ARGS) -f $(CURDIR)/docker/docker-compose.local.yml
+COMPOSE_FILE_ARGS := -f docker/docker-compose.local.yml
 endif
 
 DOCKER_COMPOSE = docker-compose $(COMPOSE_FILE_ARGS)
@@ -49,9 +50,12 @@ composer-install: run
 
 install: run
 	$(DOCKER_COMPOSE) exec -T php phing setup
+	$(DOCKER_COMPOSE) exec -T php bin/console cache:clear
+	$(DOCKER_COMPOSE) exec -T php chown -R www-data:www-data var/
 
 cache-clear: run
 	$(DOCKER_COMPOSE) exec -T php bin/console cache:clear
+	$(DOCKER_COMPOSE) exec -T php chown -R www-data:www-data var/
 
 ci-setup-test: run
 	$(DOCKER_COMPOSE) exec -T php phing ci-setup-test
@@ -70,7 +74,7 @@ test: run
 	$(DOCKER_COMPOSE) exec -T php bin/console doctrine:fixtures:load --env=test -n
 	$(DOCKER_COMPOSE) exec -T php bin/console assets:install --env=test
 	$(DOCKER_COMPOSE) exec -T php bin/console doctrine:schema:validate --env=test --skip-sync
-	$(DOCKER_COMPOSE) exec -T php vendor/phpunit/phpunit/phpunit -d memory_limit=-1 --stop-on-failure
+	$(DOCKER_COMPOSE) exec -T php bash -c "SYMFONY_DEPRECATIONS_HELPER=disabled vendor/phpunit/phpunit/phpunit -d memory_limit=-1 $(TEST_ARGS)"
 
 # compatibility to pre docker-compose rules & aliases
 $(RUN_IMAGE): run

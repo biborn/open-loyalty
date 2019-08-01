@@ -59,7 +59,13 @@ export default class CustomerService {
     putCustomer(editedCustomer) {
         let self = this;
 
-        return editedCustomer.customPUT({customer: self.EditableMap.customer(editedCustomer)});
+        let result = self.EditableMap.customer(editedCustomer);
+        if(editedCustomer.birthDate === undefined)
+        {
+            result.birthDate = null;
+        }
+
+        return editedCustomer.customPUT({customer: result });
     }
 
     postLevel(editedCustomer, levelId) {
@@ -73,12 +79,42 @@ export default class CustomerService {
     deactivateCustomer(customerId) {
         return this.Restangular.one('admin').one('customer', customerId).one('deactivate').customPOST();
     }
+
     activateCustomer(customerId) {
         return this.Restangular.one('admin').one('customer', customerId).one('activate').customPOST();
     }
 
-    postUsage(customerId, campaignId, code, usage) {
-        return this.Restangular.one('admin').one('customer').one(customerId).one('campaign').one(campaignId).one('coupon').one(code).customPOST({used: usage});
+    postUsage(customerId, campaignId, code, couponId, usage) {
+        return this.Restangular.one('admin').one('campaign').one('coupons').one('mark_as_used').customPOST({
+            'coupons': [
+                {
+                    customerId: customerId,
+                    used: usage,
+                    campaignId: campaignId,
+                    code: code,
+                    couponId: couponId
+                }
+            ]
+        });
+    }
+
+    removeManuallyLevel(customerId) {
+        return this.Restangular.one('customer', customerId).one('remove-manually-level').customPOST();
+    }
+
+    postImportCustomers(file) {
+        var formData = new FormData();
+        formData.append('file[file]', file);
+
+        return this.Restangular
+            .one('admin')
+            .one('customer')
+            .one('import')
+            .withHttpConfig({
+                transformRequest: angular.identity,
+                timeout: 0
+            })
+            .customPOST(formData, '', undefined, {'Content-Type': undefined})
     }
 }
 

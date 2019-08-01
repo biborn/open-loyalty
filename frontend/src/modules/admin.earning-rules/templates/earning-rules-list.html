@@ -4,7 +4,7 @@
     <h1>{{ "earning_rule.heading" | translate }}</h1>
     <div class="action-buttons">
 
-        <button class="medium button button-septenary-colorized" ui-sref="admin.add-earning-rule">
+        <button ng-show="EarningRuleCtrl.AuthService.hasPermission('EARNING_RULE', 'MODIFY')" class="medium button button-septenary-colorized" ui-sref="admin.add-earning-rule">
             {{ "earning_rule.add" | translate }}
         </button>
     </div>
@@ -25,7 +25,7 @@
                     <span ng-bind="row.description"></span>
                 </td>
                 <td data-title="'earning_rule.active'|translate" sortable="'active'">
-                        <span>
+                        <span ng-show="EarningRuleCtrl.AuthService.hasPermission('EARNING_RULE', 'MODIFY')">
                             <button
                                     ng-if="row.active"
                                     class="tiny button button-septenary-colorized"
@@ -40,6 +40,14 @@
                             >
                                 {{'global.inactive'|translate}}
                             </button>
+                        </span>
+                        <span ng-show="!EarningRuleCtrl.AuthService.hasPermission('EARNING_RULE', 'MODIFY')">
+                            <span ng-if="row.active">
+                                {{'global.active'|translate}}
+                            </span>
+                            <span ng-if="!row.active">
+                                {{'global.inactive'|translate}}
+                            </span>
                         </span>
                 </td>
                 <td data-title="'earning_rule.start_at'|translate" sortable="'startAt'">
@@ -58,7 +66,7 @@
                             ng-click="earningRules[$index].showModal=true">
                         <i class="fa fa-search" aria-hidden="true"></i>
                     </button>
-                    <button type="button" class="button  button-secondary tiny"
+                    <button ng-show="EarningRuleCtrl.AuthService.hasPermission('EARNING_RULE', 'MODIFY')" type="button" class="button  button-secondary tiny"
                             ui-sref="admin.edit-earning-rule({earningRuleId: row.earningRuleId})"
                             style="margin-bottom:5px;">
                         <i class="fa fa-pencil" aria-hidden="true"></i>
@@ -105,6 +113,10 @@
             <td><b>{{ "earning_rule.type" | translate }}</b></td>
             <td><span>{{'earning_rule.types.'+rule.type|translate}}</span></td>
         </tr>
+        <tr>
+            <td><b>{{ "earning_rule.code" | translate }}</b></td>
+            <td><span>{{rule.code}}</span></td>
+        </tr>
         <tr ng-if="rule.type=='points'">
             <td><b>{{ "earning_rule.point_value" | translate }}</b></td>
             <td><span>{{ rule.pointValue }}</span></td>
@@ -112,17 +124,36 @@
         <tr ng-if="rule.type=='points'">
             <td><b>{{ "earning_rule.excluded_skus" | translate }}</b></td>
             <td>
-                <label class="label label-default" ng-repeat="s in rule.excludedSKUs">{{ rule.excludedSKUs[$index]
-                    }}</label>
+                <label class="label label-default" ng-repeat="s in rule.excludedSKUs">{{rule.excludedSKUs[$index]}}</label>
                 <span ng-if="!rule.excludedSKUs.length">{{ 'global.not_set'|translate }}</span>
             </td>
         </tr>
         <tr ng-if="rule.type=='points'">
+            <td><b>{{ "earning_rule.labels_inclusion_type" | translate }}</b></td>
+            <td>
+                <span ng-if="rule.labelsInclusionType=='exclude_labels'">{{ 'earning_rule.labels_inclusion_type_exclude'|translate }}</span>
+                <span ng-if="rule.labelsInclusionType=='include_labels'">{{ 'earning_rule.labels_inclusion_type_include'|translate }}</span>
+            </td>
+        </tr>
+        <tr ng-if="rule.type=='points' && rule.labelsInclusionType=='exclude_labels'">
             <td><b>{{ "earning_rule.excluded_labels" | translate }}</b></td>
             <td>
-                <label class="label label-default" ng-repeat="s in rule.excludedLabels">{{ s.key }}:{{ s.value
-                    }}</label>
+                <label class="label label-default" ng-repeat="s in rule.excludedLabels">{{ s.key }}:{{ s.value }}</label>
                 <span ng-if="!rule.excludedLabels.length">{{ 'global.not_set'|translate }}</span>
+            </td>
+        </tr>
+        <tr ng-if="rule.type=='points' && rule.labelsInclusionType=='include_labels'">
+            <td><b>{{ "earning_rule.included_labels" | translate }}</b></td>
+            <td>
+                <label class="label label-default" ng-repeat="s in rule.includedLabels">{{ s.key }}:{{ s.value }}</label>
+                <span ng-if="!rule.includedLabels.length">{{ 'global.not_set'|translate }}</span>
+            </td>
+        </tr>
+        <tr ng-if="rule.type=='multiply_by_product_labels'">
+            <td><b>{{ "earning_rule.label_multipliers" | translate }}</b></td>
+            <td>
+                <label class="label label-default" ng-repeat="s in rule.labelMultipliers">{{ s.key }}:{{ s.value}} * {{ s.multiplier}}</label>
+                <span ng-if="!rule.labelMultipliers.length">{{ 'global.not_set'|translate }}</span>
             </td>
         </tr>
         <tr ng-if="rule.type=='points'">
@@ -149,7 +180,7 @@
             <td><b>{{ "earning_rule.sku" | translate }}</b></td>
             <td><span>{{ rule.skuIds.join(', ') }}</span></td>
         </tr>
-        <tr ng-if="rule.type=='event' || rule.type=='product_purchase' || rule.type=='referral' || rule.type=='custom_event'">
+        <tr ng-if="rule.type=='event' || rule.type=='product_purchase' || rule.type=='referral' || rule.type=='custom_event' || rule.type=='qrcode'">
             <td><b>{{ "earning_rule.points_amount" | translate }}</b></td>
             <td><span>{{ rule.pointsAmount }}</span></td>
         </tr>
@@ -162,7 +193,7 @@
                 {{ rule.usageUrl }}
             </span></td>
         </tr>
-        <tr ng-if="rule.type=='custom_event'">
+        <tr ng-if="rule.type=='custom_event' || rule.type=='qrcode'">
             <td><b>{{ "earning_rule.limit_info" | translate }}</b></td>
             <td><span ng-if="rule.limit.active">{{ rule.limit.limit }} / {{ ('earning_rule.limit_period.'+rule.limit.period) | translate }}</span>
                 <span ng-if="!rule.limit || !rule.limit.active">{{ "global.not_set" | translate }}</span></td>
@@ -171,13 +202,21 @@
             <td><b>{{ "earning_rule.multiplier" | translate }}</b></td>
             <td><span>{{ rule.multiplier }}</span></td>
         </tr>
-        <tr>
+        <tr ng-show="rule.type != 'event' || rule.eventName != 'oloy.account.created'">
+            <td><b>{{ "earning_rule.segments" | translate }}</b></td>
+            <td><label class="label label-default" ng-repeat="(key, value) in rule.segmentNames">{{ value }}</label></td>
+        </tr>
+        <tr ng-show="rule.type != 'event' || rule.eventName != 'oloy.account.created'">
             <td><b>{{ "earning_rule.levels" | translate }}</b></td>
-            <td><span style="padding-right: 10px" ng-repeat="(key, value) in rule.segmentNames">{{ value }}</span></td>
+            <td><label class="label label-default" ng-repeat="(key, value) in rule.levelNames">{{ value }}</label></td>
         </tr>
         <tr>
-            <td><b>{{ "earning_rule.segments" | translate }}</b></td>
-            <td><span style="padding-right: 10px" ng-repeat="(key, value) in rule.levelNames">{{ value }}</span></td>
+            <td><b>{{ "earning_rule.pos" | translate }}</b></td>
+            <td><label class="label label-default" ng-repeat="(key, value) in rule.posNames">{{ value }}</label></td>
+        </tr>
+        <tr ng-if="EarningRuleCtrl.isStoppable(rule.type)">
+            <td><b>{{ "earning_rule.last_executed_rule" | translate }}</b></td>
+            <td><span>{{rule.lastExecutedRule || 'false'}}</span></td>
         </tr>
         </thead>
     </table>

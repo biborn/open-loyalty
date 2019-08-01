@@ -7,6 +7,25 @@ It's a loyalty platform in open source, with ready-to-use gamification and loyal
 
 See Open Loyalty product tour - https://youtu.be/cDZZemHxgAk.
 
+## Editions
+
+Open Loyalty is available in two editions - Open Source and Enterprise.
+Here you can find Open Source Edition. It is limited for projects with up to 200 members, does not provide guaranteed performance and scalability and therefore, it is recommended for testing purposes only. We strongly advise to use Enterprise Edition in commercial projects.
+
+Enterprise Edition is not available publicly on GitHub.
+To get the quotation, please visit www.openloyalty.io and send the request.
+
+|                                | Open Source Edition         | Enterprise Edition                           |
+| ------------------------------ | --------------------------- | -------------------------------------------- |
+| Full access to the source code |  Yes                        | Yes                                          |
+| Self-hosted                    |  Yes                        | Yes                                          |
+| Customers limit                |  200                        | Unlimited                                    |
+| Cockpits                       |  Admin Cockpit, POS Cockpit | Admin Cockpit, POS Cockpit, Client Cockpit   |
+| Whitelabel                     |  No                         | Yes                                          |
+| High performance               |  No                         | Yes                                          |
+| Scalability                    |  No                         | Yes                                          |
+| Producer's support             |  No                         | Product support, Technical support, Training |
+| Updates                        |  No                         | Regular                                      |
 
 ## Business applications
 
@@ -14,10 +33,9 @@ There is variety of applications for Open Loyalty. Based on it you can build loy
 
 ## Screenshots
 
-![Dashboard](https://cloud.githubusercontent.com/assets/26326842/24359309/428f7dc4-1304-11e7-99c2-36ff23fe5036.png)
-![Client Cockpit](https://cloud.githubusercontent.com/assets/26326842/24359396/7f489fd4-1304-11e7-9ae5-f05c88eb8c56.png)
-![eCommerce Cockpit](https://cloud.githubusercontent.com/assets/26326842/24359495/d65c1210-1304-11e7-86bf-9e63ab754360.png)
-![POS Cockpit](https://cloud.githubusercontent.com/assets/26326842/24359465/b796e260-1304-11e7-9da5-4bfc0a026a16.png)
+![Admin Cockpit](https://user-images.githubusercontent.com/3582562/54033263-1db79500-41b4-11e9-8f2d-9b91acce50cf.png)
+![Client Cockpit](https://user-images.githubusercontent.com/3582562/54033264-1db79500-41b4-11e9-984c-a954cd136d5c.png)
+![Client Cockpit](https://user-images.githubusercontent.com/3582562/54033262-1db79500-41b4-11e9-88a6-e5449cb6782b.png)
 
 ## Quick install
 
@@ -35,12 +53,6 @@ Execute bellow command to run application:
 docker-compose up
 ```
 
-Then use another command to setup database, Elasticsearch and load some demo data:
-
-```
-docker-compose exec php phing setup
-```
-
 Before you start using Open Loyalty you need to define hosts in your local environment. Add host openloyalty.localhost as 127.0.0.1 in your system configuration file (/etc/hosts).
 If you find any problems using docker (for example on Windows environments) please try our Vagrant recipe.
 
@@ -54,7 +66,7 @@ Then, please execute following commands:
 vagrant up
 vagrant ssh
 docker-compose -f docker/docker-compose.yml up -d
-docker-compose -f docker/docker-compose.yml exec php phing demo 
+docker-compose -f docker/docker-compose.yml exec --user=www-data php phing setup
 ```
 
 That's all. Now you can go to admin panel [openloyalty.localhost:8182](http://openloyalty.localhost:8182).
@@ -72,16 +84,30 @@ After starting Open Loyalty it's exposes services under following URLs:
  * http://openloyalty.localhost:8182 - the administration panel,
  * http://openloyalty.localhost:8183 - the customer panel,
  * http://openloyalty.localhost:8184 - the merchant panel,
- * http://openloyalty.localhost:8181 - RESTful API port
- * http://openloyalty.localhost:8181/doc - swagger-like API doc
+ * http://openloyalty.localhost - RESTful API port
+ * http://openloyalty.localhost/doc - swagger-like API doc
 
-If you are developer and want to attach source code then:
+
+## For developers
+
+If you are developer and want to attach source code then you have to build base docker images:
 
 ```
-docker-compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+./docker/base/build_dev.sh
 ```
 
-## Url access for developer
+and run containers:
+
+```
+docker-compose -f docker/docker-compose.dev.yml up
+```
+
+Remember about setup database using bellow command:
+
+```
+docker-compose -f docker/docker-compose.dev.yml exec --user=www-data php phing setup
+```
+
 After starting Open Loyalty in developer mode it's exposes services under slightly different URLs:
 
  * http://openloyalty.localhost:8081/admin - the administration panel,
@@ -96,10 +122,7 @@ Running `phing setup` will generate the JWT public/private keys for you, but in 
 
 ## Documentation
 
-Technical documentation is located [here](backend/doc/index.rst).
-
-## Looking for a demo?
-If you need to see a demo of Open Loyalty, drop us a line via the form at the official landing page http://www.openloyalty.io/. 
+Technical documentation is located [here](backend/doc/index.rst). 
 
 ## CONTRIBUTING
 If you wish to contribute to Open Loyalty, please read the CONTRIBUTING.md file.

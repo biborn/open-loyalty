@@ -35,10 +35,18 @@
                     </div>
                     <div class="row">
                         <div class="columns small-3">
-                            <label>{{ "seller.customer_search.name"|translate }}</label>
+                            <label>{{ "seller.customer_search.firstName"|translate }}</label>
                         </div>
                         <div class="columns small-9" form-validation="validate.firstName.errors">
                             <input type="text" ng-model="search.firstName"/>
+                        </div>
+
+                    </div>
+                    <div class="row">
+                        <div class="columns small-3">
+                            <label>{{ "seller.customer_search.lastName"|translate }}</label>
+                        </div>
+                        <div class="columns small-9" form-validation="validate.lastName.errors">
                             <input type="text" ng-model="search.lastName"/>
                         </div>
                     </div>
@@ -114,7 +122,7 @@
                             <span ng-bind="row.email"></span>
                         </td>
                         <td>
-                            <span ng-bind="row.gender"></span>
+                            <span ng-bind="(row.gender) ? ('customer.'+row.gender|translate) : ('global.not_set'|translate)"></span>
                         </td>
                         <td>
                             <span ng-bind="row.birthDate|date : 'yyyy-MM-dd'"></span>
@@ -148,6 +156,12 @@
                             <button ng-if="row.active" type="button" class="button button-septenary tiny"  ng-click="customers[$index].showRemoveModal=true"
                                     style="margin-bottom:5px;">
                                 <i class="fa fa-remove" aria-hidden="true"></i>
+                            </button>
+                            <button ng-if="row.status && row.status.type === 'new' && SellerCustomerCtrl.isActivationBySms()" type="button" class="button button-septenary tiny"  ng-click="SellerCustomerCtrl.resendActivationCode(row.customerId)"
+                                    style="margin-bottom:5px;"
+                                    title="{{ 'customer.resend_activation_code'|translate }}"
+                            >
+                                <i class="fa fa-send" aria-hidden="true"></i>
                             </button>
                         </td>
                     </tr>

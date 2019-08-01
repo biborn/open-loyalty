@@ -19,32 +19,25 @@ export default class TransferController {
         this.$scope.validate = {};
         this.$scope.clientSearch = 0; //0 - nothing, 1 - loading, 2 - nothing found
         this.config = DataService.getConfig();
-        this.transferTypeConfig = {
-            valueField: 'type',
-            labelField: 'name',
-            create: false,
-            maxItems: 1,
-        };
-        this.transferType = [
-            {
-                name: this.$filter('translate')('transfer.spend_points'),
-                type: 'spend'
-            },
-            {
-                name: this.$filter('translate')('transfer.add_points'),
-                type: 'add'
-            }
-        ];
+        this.transferTypeConfig = this.TransferService.getTransferTypeConfig();
+        this.transferType = this.TransferService.getTransferType();
 
         let self = this;
         this.customerConfig = {
             valueField: 'customerId',
-            labelField: 'email',
+            render: {
+                option: (item, escape) => {
+                    return '<div>'+(item.email ? escape(item.email) : '')+' ('+escape(item.phone)+')</div>';
+                },
+                item: (item, escape) => {
+                    return '<div>'+(item.email ? escape(item.email) : '')+' ('+escape(item.phone)+')</div>';
+                }
+            },
             create: false,
             sortField: 'email',
             maxItems: 1,
-            searchField: 'email',
-            placeholder: this.$filter('translate')('global.start_typing_an_email'),
+            searchField: ['phone', 'email'],
+            placeholder: this.$filter('translate')('global.start_typing_an_email_or_phone'),
             onChange: value => {
                 self.$scope.clientSearch = 0;
             },
@@ -54,7 +47,7 @@ export default class TransferController {
                 self.$scope.clientSearch = 1;
 
                 CustomerService.getCustomers(ParamsMap.params({
-                    'filter[email]': query,
+                    'filter[emailOrPhone]': query,
                     'filter[silenceQuery]': true
                 }))
                     .then(
@@ -74,7 +67,8 @@ export default class TransferController {
             transferList: true,
             coverLoader: true,
             addTransfer: false,
-            cancelTransfer: false
+            cancelTransfer: false,
+            importTransfer: false
         }
     }
 
@@ -116,6 +110,19 @@ export default class TransferController {
 
         self.$scope.showSpendPoints = false;
     }
+
+    openImportModal() {
+        let self = this;
+
+        self.$scope.showTransferImportModal = true;
+    }
+
+    closeImportModal() {
+        let self = this;
+
+        self.$scope.showTransferImportModal = false;
+    }
+
 
     getData() {
         let self = this;
@@ -260,6 +267,42 @@ export default class TransferController {
                     self.loaderStates.cancelTransfer = false;
                 }
             )
+    }
+
+    importTransfer(file) {
+        let self = this;
+
+        if (file) {
+            self.loaderStates.importTransfer = true;
+            self.TransferService.postImportTransfer(file)
+                .then(
+                    res => {
+                        if (res.totalProcessed == 0) {
+                            let message = self.$filter('translate')('xhr.import.no_data');
+                            self.Flash.create('warning', message);
+                        }
+                        else if (res.totalFailed == 0) {
+                            let message = self.$filter('translate')('xhr.import.success', {processed: res.totalProcessed});
+                            self.Flash.create('success', message);
+                        } else {
+                            let message = self.$filter('translate')('xhr.import.warning',
+                                {processed: res.totalProcessed, success: res.totalSuccess, failed: res.totalFailed}
+                            );
+                            self.Flash.create('warning', message);
+                        }
+
+                        self.$scope.importTransactionModal = false;
+                        self.loaderStates.importTransfer = false;
+                        self.closeImportModal();
+                        self.tableParams.reload();
+                    },
+                    res => {
+                        let message = self.$filter('translate')('xhr.import.error');
+                        self.Flash.create('danger', message);
+                        self.loaderStates.importTransfer = false;
+                    }
+                );
+        }
     }
 }
 

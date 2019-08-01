@@ -1,11 +1,12 @@
 export default class LevelController {
-    constructor($scope, $state, AuthService, LevelService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter, DataService) {
+    constructor($scope, $state, $timeout, AuthService, LevelService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter, DataService) {
         if (!AuthService.isGranted('ROLE_ADMIN')) {
             AuthService.logout();
         }
         this.$scope = $scope;
         this.LevelService = LevelService;
         this.$state = $state;
+        this.AuthService = AuthService;
         this.Flash = Flash;
         this.levelId = $stateParams.levelId || null;
         this.levelName = $stateParams.levelName || null;
@@ -15,7 +16,27 @@ export default class LevelController {
         this.$q = $q;
         this.Validation = Validation;
         this.$filter = $filter;
+        this.$timeout = $timeout;
         this.config = DataService.getConfig();
+        this.DataService = DataService;
+        this.$scope.fileValidate = {};
+        // If 'required: true' it will only
+        // be required on default language
+        this.$scope.translatableFields = [
+            {
+                key: 'name',
+                label: 'level.name',
+                prompt: 'level.name_prompt',
+                required: true
+            },
+            {
+                key: 'description',
+                label: 'level.description',
+                prompt: 'level.description_prompt',
+                required: false
+            }
+        ];
+        this.$scope.availableFrontendTranslations = this.DataService.getAvailableFrontendTranslations();
         this.active = [
             {
                 name: this.$filter('translate')('global.active'),
@@ -129,7 +150,20 @@ export default class LevelController {
                         self.Flash.create('danger', message);
                         self.loaderStates.coverLoader = false;
                     }
+                );
+
+            self.LevelService.getLevelImage(self.levelId)
+                .then(
+                    res => {
+                        self.$scope.levelImagePath = true;
+                    }
                 )
+                .catch(
+                    err => {
+                        self.$scope.levelImagePath = false;
+                    }
+                );
+
         } else {
             self.$state.go('admin.levels-list');
             let message = self.$filter('translate')('xhr.get_single_level.no_id');
@@ -144,12 +178,20 @@ export default class LevelController {
             self.LevelService.getFile(levelId)
                 .then(
                     function (res) {
-                        var date = new Date();
-                        var blob = new Blob([res.data], {type: res.headers('Content-Type')});
-                        var downloadLink = angular.element('<a></a>');
-                        downloadLink.attr('href', window.URL.createObjectURL(blob));
-                        downloadLink.attr('download', levelName.replace(" ", "-") + "-" + date.toISOString().substring(0, 10) + ".csv");
-                        downloadLink[0].click();
+                        let date = new Date();
+                        let filename = levelName.replace(" ", "-") + "-" + date.toISOString().substring(0, 10) + ".csv";
+                        let blob = new Blob([res], {type: 'text/csv'});
+                        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+                            window.navigator.msSaveOrOpenBlob(blob);
+                            return;
+                        }
+
+                        const data = window.URL.createObjectURL(blob);
+
+                        let link = document.createElement('a');
+                        link.href = data;
+                        link.download = filename;
+                        self.$timeout(function() { link.dispatchEvent(new MouseEvent('click')); }, 2000);
                     }
                 );
         }
@@ -161,9 +203,35 @@ export default class LevelController {
         self.LevelService.postLevel(newLevel)
             .then(
                 res => {
-                    self.$state.go('admin.levels-list');
-                    let message = self.$filter('translate')('xhr.post_single_level.success');
-                    self.Flash.create('success', message);
+                    if (self.$scope.levelImage) {
+                        self.$scope.fileValidate = {};
+
+                        self.LevelService.postLevelImage(res.id, self.$scope.levelImage)
+                            .then(
+                                res2 => {
+                                    self.$state.go('admin.levels-list', {levelId: self.levelId});
+                                    let message = self.$filter('translate')('xhr.post_single_level.success');
+                                    self.Flash.create('success', message);
+                                }
+                            )
+                            .catch(
+                                err => {
+                                    self.$scope.fileValidate = self.Validation.mapSymfonyValidation(err.data);
+                                    self.LevelService.storedFileError = self.$scope.fileValidate;
+
+                                    let message = self.$filter('translate')('xhr.post_single_level.warning');
+                                    self.Flash.create('warning', message);
+
+                                    self.$state.go('admin.edit-level', {levelId: res.id});
+                                }
+                            );
+
+                    } else {
+
+                        self.$state.go('admin.levels-list');
+                        let message = self.$filter('translate')('xhr.post_single_level.success');
+                        self.Flash.create('success', message);
+                    }
                 },
                 res => {
                     self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
@@ -179,9 +247,35 @@ export default class LevelController {
         self.LevelService.putLevel(editedLevel)
             .then(
                 res => {
-                    let message = self.$filter('translate')('xhr.put_single_level.success');
-                    self.Flash.create('success', message);
-                    self.$state.go('admin.levels-list');
+
+                    if (self.$scope.levelImage) {
+                        self.$scope.fileValidate = {};
+
+                        self.LevelService.postLevelImage(self.levelId, self.$scope.levelImage)
+                            .then(
+                                res2 => {
+                                    self.$state.go('admin.levels-list', {levelId: self.levelId});
+                                    let message = self.$filter('translate')('xhr.put_single_level.success');
+                                    self.Flash.create('success', message);
+                                }
+                            )
+                            .catch(
+                                err => {
+                                    self.$scope.fileValidate = self.Validation.mapSymfonyValidation(err.data);
+                                    self.LevelService.storedFileError = self.$scope.fileValidate;
+
+                                    let message = self.$filter('translate')('xhr.put_single_level.warning');
+                                    self.Flash.create('warning', message);
+
+                                    self.$state.go('admin.edit-level', {levelId: self.levelId});
+                                }
+                            );
+
+                    } else {
+                        let message = self.$filter('translate')('xhr.put_single_level.success');
+                        self.Flash.create('success', message);
+                        self.$state.go('admin.levels-list');
+                    }
                 },
                 res => {
                     self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
@@ -236,8 +330,42 @@ export default class LevelController {
                     self.Flash.create('danger', message);
                 }
             )
+    }
 
+    /**
+     * Deletes photo
+     *
+     * @method deletePhoto
+     */
+    deletePhoto() {
+        let self = this;
+
+        this.LevelService.deleteLevelImage(this.levelId)
+            .then(
+                res => {
+                    self.$scope.levelImagePath = false;
+                    let message = self.$filter('translate')('xhr.delete_level_image.success');
+                    self.Flash.create('success', message);
+                }
+            )
+            .catch(
+                err => {
+                    self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
+                    let message = self.$filter('translate')('xhr.delete_level_image.error');
+                    self.Flash.create('danger', message);
+                }
+            )
+    }
+
+    /**
+     * Generating photo route
+     *
+     * @method generatePhotoRoute
+     * @returns {string}
+     */
+    generatePhotoRoute() {
+        return this.config.apiUrl + '/level/' + this.levelId + '/photo'
     }
 }
 
-LevelController.$inject = ['$scope', '$state', 'AuthService', 'LevelService', 'Flash', 'NgTableParams', '$q', 'ParamsMap', '$stateParams', 'EditableMap', 'Validation', '$filter', 'DataService'];
+LevelController.$inject = ['$scope', '$state', '$timeout', 'AuthService', 'LevelService', 'Flash', 'NgTableParams', '$q', 'ParamsMap', '$stateParams', 'EditableMap', 'Validation', '$filter', 'DataService'];

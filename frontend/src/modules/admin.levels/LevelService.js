@@ -23,7 +23,7 @@ export default class LevelService {
         return this.Restangular.one('level', levelId).all('customers').getList();
     }
     getFile(levelId) {
-        return this.Restangular.setFullResponse(true).one('csv').one('level', levelId).get();
+        return this.Restangular.one('csv').one('level', levelId).get();
     }
     putLevel(editedLevel) {
         let self = this;
@@ -35,6 +35,51 @@ export default class LevelService {
         let self = this;
 
         return this.Restangular.one('level').one(levelId).one('activate').customPOST({active: state})
+    }
+
+    /**
+     * Calls for post image to level
+     *
+     * @method postLevelImage
+     * @param {Integer} levelId
+     * @param {Object} data
+     * @returns {Promise}
+     */
+    postLevelImage(levelId, data) {
+        let fd = new FormData();
+
+        fd.append('photo[file]', data);
+
+        return this.Restangular
+            .one('level', levelId)
+            .one('photo')
+            .withHttpConfig({transformRequest: angular.identity})
+            .customPOST(fd, '', undefined, {'Content-Type': undefined});
+    }
+
+    /**
+     * Calls for level image
+     *
+     * @method getLevelImage
+     * @param {Integer} levelId
+     * @returns {Promise}
+     */
+    getLevelImage(levelId) {
+        return this.Restangular.one('level', levelId).one('photo').get();
+    }
+
+    /**
+     * Calls to remove level photo
+     *
+     * @method deleteLevelImage
+     * @param {Integer} levelId
+     * @returns {Promise}
+     */
+    deleteLevelImage(levelId) {
+        return this.Restangular
+            .one('level', levelId)
+            .one('photo')
+            .remove()
     }
 }
 

@@ -11,7 +11,13 @@ export default class DataService {
         this._availableReferralTypes = null;
         this.availableFrontendTranslations = null;
         this.availableCustomerStatuses = null;
+        this.availableAccountActivationMethods = null;
+        this.availableMarketingVendors = null;
+        this.availableMarketingVendorsConfig = null;
+        this.smsGatewayConfig = null;
+        this.activationMethod = null;
         this._availableEarningRuleLimitPeriods = null;
+        this.availablePointExpireAfter = null;
         this.availableCurrencies = [
             {
                 name: 'PLN',
@@ -24,7 +30,22 @@ export default class DataService {
             {
                 name: 'EUR',
                 code: 'eur'
+            },
+            {
+                name: 'HKD',
+                code: 'hkd'
+            },
+            {
+                name: 'PESO',
+                code: 'cop'
             }
+        ];
+        this.stoppableEarningRulesType = [
+            'points',
+            'product_purchase',
+            'multiply_for_product',
+            'multiply_by_product_labels',
+            'instant_reward'
         ];
         this.config = window.OpenLoyaltyConfig || {};
     }
@@ -49,22 +70,58 @@ export default class DataService {
         return this.config;
     }
 
+    getActivationMethod() {
+        let dfd = this.$q.defer();
+
+        if (this.activationMethod) {
+            dfd.resolve(this.activationMethod);
+
+            return;
+        }
+        let activationMethod = this.Restangular.one('settings').one('activation-method').get();
+        activationMethod.then((res) => {
+            if (res.method) {
+                dfd.resolve(res.method);
+            } else {
+                dfd.resolve('email');
+            }
+        })
+
+        return dfd.promise;
+    }
+
     getAvailableData() {
         let self = this;
+        let dfd = self.$q.defer();
 
         let languages = self.Restangular.one('settings').one('choices').one('language').get();
-        let availableFrontendTranslations = self.Restangular.one('settings').one('choices').one('availableFrontendTranslations').get();
-        let availableCustomerStatuses = self.Restangular.one('settings').one('choices').one('availableCustomerStatuses').get();
-        let availableEarningRuleLimitPeriods = self.Restangular.one('settings').one('choices').one('earningRuleLimitPeriod').get();
         let timezones = self.Restangular.one('settings').one('choices').one('timezone').get();
         let countries = self.Restangular.one('settings').one('choices').one('country').get();
         let events = self.Restangular.one('settings').one('choices').one('promotedEvents').get();
+        let availableCustomerStatuses = self.Restangular.one('settings').one('choices').one('availableCustomerStatuses').get();
+        let availableFrontendTranslations = self.Restangular.one('settings').one('choices').one('availableFrontendTranslations').get();
+        let availableEarningRuleLimitPeriods = self.Restangular.one('settings').one('choices').one('earningRuleLimitPeriod').get();
         let referralEvents = self.Restangular.one('settings').one('choices').one('referralEvents').get();
         let referralTypes = self.Restangular.one('settings').one('choices').one('referralTypes').get();
+        let availableAccountActivationMethods = self.Restangular.one('settings').one('choices').one('availableAccountActivationMethods').get();
+        let smsGatewatConfig = self.Restangular.one('settings').one('choices').one('smsGatewayConfig').get();
+        let availableMarketingVendors = self.Restangular.one('settings').one('choices').one('availableMarketingVendors').get();
+        let availablePointExpireAfter = self.Restangular.one('settings').one('choices').one('availablePointExpireAfter').get();
 
-        let dfd = self.$q.defer();
-
-        self.$q.all([languages, timezones, countries, events, availableCustomerStatuses, availableEarningRuleLimitPeriods, referralEvents, referralTypes, availableCustomerStatuses])
+        self.$q.all([
+            languages,
+            timezones,
+            countries,
+            events,
+            availableCustomerStatuses,
+            availableFrontendTranslations,
+            availableEarningRuleLimitPeriods,
+            referralEvents,
+            referralTypes,
+            availableAccountActivationMethods,
+            smsGatewatConfig,
+            availableMarketingVendors,
+            availablePointExpireAfter])
             .then(
                 function (res) {
                     if (res[0].choices) {
@@ -131,57 +188,59 @@ export default class DataService {
 
                         self.availablePromotedEvents = events;
                     }
+
                     if (res[4].choices) {
-                        let translations = [];
+                        let statuses = [];
                         let index = 0;
 
                         for (let i in res[4].choices) {
+                            statuses.push({
+                                _id: index,
+                                name: res[4].choices[i],
+                                code: res[4].choices[i]
+                            });
+                            ++index;
+                        }
+
+                        self.availableCustomerStatuses = statuses;
+                    }
+
+                    if (res[5].choices) {
+                        let translations = [];
+                        let index = 0;
+
+                        for (let i in res[5].choices) {
                             translations.push({
                                 _id: index,
-                                name: res[4].choices[i].name,
-                                code: res[4].choices[i].key
+                                name: res[5].choices[i].name,
+                                code: res[5].choices[i].code,
+                                default: res[5].choices[i].default
                             });
                             ++index;
                         }
 
                         self.availableFrontendTranslations = translations;
                     }
-                    if (res[5].choices) {
-                        let events = [];
-                        let index = 0;
 
-                        for (let i in res[5].choices) {
-                            if(!res[5].choices.hasOwnProperty(i)) {
-                                continue;
-                            }
-                            events.push({
-                                _id: index,
-                                name: self.$filter('translate')('earning_rule.limit.'+i),
-                                code: res[5].choices[i]
-                            });
-                            ++index;
-                        }
-
-                        self._availableEarningRuleLimitPeriods = events;
-                    }
                     if (res[6].choices) {
-                        let events = [];
+                        let earningRuleLimit = [];
                         let index = 0;
 
                         for (let i in res[6].choices) {
                             if(!res[6].choices.hasOwnProperty(i)) {
                                 continue;
                             }
-                            events.push({
+                            earningRuleLimit.push({
                                 _id: index,
-                                name: self.$filter('translate')('earning_rule.referral_events.'+i),
+                                name: self.$filter('translate')('earning_rule.limit.'+i),
                                 code: res[6].choices[i]
                             });
                             ++index;
                         }
 
-                        self._availableReferralEvents = events;
+                        self._availableEarningRuleLimitPeriods = earningRuleLimit;
                     }
+
                     if (res[7].choices) {
                         let events = [];
                         let index = 0;
@@ -192,28 +251,102 @@ export default class DataService {
                             }
                             events.push({
                                 _id: index,
-                                name: self.$filter('translate')('earning_rule.referral_types.'+i),
+                                name: self.$filter('translate')('earning_rule.referral_events.'+i),
                                 code: res[7].choices[i]
+                            });
+                            ++index;
+                        }
+
+                        self._availableReferralEvents = events;
+                    }
+                    if (res[8].choices) {
+                        let events = [];
+                        let index = 0;
+
+                        for (let i in res[8].choices) {
+                            if(!res[8].choices.hasOwnProperty(i)) {
+                                continue;
+                            }
+                            events.push({
+                                _id: index,
+                                name: self.$filter('translate')('earning_rule.referral_types.'+i),
+                                code: res[8].choices[i]
                             });
                             ++index;
                         }
 
                         self._availableReferralTypes = events;
                     }
-                    if (res[8].choices) {
-                        let statuses = [];
+
+                    if (res[9].choices) {
+                        let methods = [];
                         let index = 0;
 
-                        for (let i in res[8].choices) {
-                            statuses.push({
+                        for (let i in res[9].choices) {
+                            methods.push({
                                 _id: index,
-                                name: res[8].choices[i],
-                                code: res[8].choices[i]
+                                name: res[9].choices[i],
+                                code: res[9].choices[i]
                             });
                             ++index;
                         }
 
-                        self.availableCustomerStatuses = statuses;
+                        self.availableAccountActivationMethods = methods;
+                    }
+
+                    if (res[10].fields) {
+                        let gateway = [];
+
+                        for (let i in res[10].fields) {
+                            gateway.push({
+                                name: i,
+                                type: res[10].fields[i]
+                            });
+                        }
+
+                        self.smsGatewayConfig = gateway;
+                    }
+
+                    if (res[11].choices) {
+                        let methods = [];
+                        let config = {};
+                        let index = 0;
+
+                        for (let i in res[11].choices) {
+                            methods.push({
+                                _id: index,
+                                name: res[11].choices[i]['name'],
+                                code: i
+                            });
+
+                            config[i] = [];
+                            for (let field in res[11].choices[i]['config']) {
+                                config[i].push({
+                                    name: field,
+                                    type: res[11].choices[i]['config'][field]
+                                });
+                            }
+                            ++index;
+                        }
+
+                        self.availableMarketingVendors = methods;
+                        self.availableMarketingVendorsConfig = config;
+                    }
+
+                    if (res[12].choices) {
+                        let pointsSettingsChoices = [];
+                        let index = 0;
+
+                        for (let key in res[12].choices) {
+                            pointsSettingsChoices.push({
+                                _id: index,
+                                value: key,
+                                label: self.$filter('translate')(res[12].choices[key])
+                            });
+                            ++index;
+
+                        }
+                        self.availablePointExpireAfter = pointsSettingsChoices;
                     }
 
                     dfd.resolve()
@@ -232,6 +365,10 @@ export default class DataService {
 
     getCurrencies() {
         return this.availableCurrencies;
+    }
+
+    getPointExpireAfter() {
+        return this.availablePointExpireAfter;
     }
 
     getCountries() {
@@ -282,6 +419,29 @@ export default class DataService {
         return this.availableCustomerStatuses
     }
 
+    setAvailableAccountActivationMethods(data) {
+        this.availableAccountActivationMethods = data;
+    }
+
+    getAvailableAccountActivationMethods() {
+        return this.availableAccountActivationMethods
+    }
+    setSmsGatewayConfig(data) {
+        this.smsGatewayConfig = data;
+    }
+
+    getSmsGatewayConfig() {
+        return this.smsGatewayConfig;
+    }
+
+    getAvailableMarketingVendors() {
+        return this.availableMarketingVendors;
+    }
+
+    getAvailableMarketingVendorsConfig() {
+        return this.availableMarketingVendorsConfig;
+    }
+
     getAvailableEarningRuleLimitPeriods() {
         return this._availableEarningRuleLimitPeriods;
     }
@@ -304,6 +464,14 @@ export default class DataService {
 
     setAvailableReferralTypes(value) {
         this._availableReferralTypes = value;
+    }
+
+    setActivationMethod(value) {
+        this.activationMethod = value;
+    }
+
+    isStoppableEarningRule(type) {
+        return this.stoppableEarningRulesType.includes(type);
     }
 }
 

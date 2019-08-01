@@ -30,6 +30,11 @@ import 'brace';
 import 'angular-animate';
 import 'angular-loading-bar';
 import 'ace-angular';
+import 'simplemde/dist/simplemde.min.css';
+import 'ng-simplemde';
+import 'ng-showdown';
+
+
 // global styles
 import 'pickadate/lib/themes/classic.css';
 import 'pickadate/lib/themes/classic.date.css';
@@ -44,11 +49,13 @@ import EditableMap from './component/global/map/EditableMap';
 import ParamsMap from './component/global/map/ParamsMap';
 import Validation from './component/global/validation/Validation';
 
+import ToggleControlDirective from './component/global/toggleControl/ToggleControlDirective';
 import ModalDirective from './component/global/modal/ModalDirective';
 import CheckboxDirective from './component/global/checkbox/CheckboxDirective';
 import DatepickerDirective from './component/global/datepicker/DatepickerDirective';
 import FormValidationDirective from './component/global/validation/FormValidationDirective';
 import CsvUploadDirective from './component/global/csv/CsvUploadDirective';
+import XmlUploadDirective from './component/global/import/XmlUploadDirective';
 import SecurityController from './component/global/security/SecurityController';
 import SecurityService from './component/global/security/SecurityService';
 
@@ -65,6 +72,9 @@ import StaticPagesDirective from './component/global/pages/StaticPagesDirective'
 import FileModelDirective from './component/global/filereader/FileModelDirective';
 import BoxLoaderDirective from './component/global/boxLoader/BoxLoaderDirective';
 import SpinnerLoaderDirective from './component/global/spinnerLoader/SpinnerLoaderDirective';
+
+import AdminFieldsetBlockDirective from './component/admin/adminFieldsetBlock/AdminFieldsetBlockDirective';
+import AdminFieldsetRowDirective from './component/admin/adminFieldsetRow/AdminFieldsetRowDirective';
 
 import DebugController from './component/global/debug/DebugController';
 
@@ -96,16 +106,13 @@ require('./modules/admin.transactions/module.js');
 require('./modules/admin.transfers/module.js');
 require('./modules/admin.translations/module.js');
 require('./modules/admin.users/module.js');
+require('./modules/admin.roles/module.js');
 require('./modules/admin.emails/module.js');
 require('./modules/admin.logs/module.js');
 
 if (!window.OpenLoyaltyConfig.debug) {
     if (!window.console) window.console = {};
-    var methods = ["log", "debug", "warn", "info"];
-    for (var i = 0; i < methods.length; i++) {
-        console[methods[i]] = function () {
-        };
-    }
+    ["log", "debug", "warn", "info"].map((method) => console[method] = function(){})
 }
 
 angular.module('OpenLoyalty', [
@@ -140,9 +147,12 @@ angular.module('OpenLoyalty', [
      'admin.transactions',
      'admin.transfers',
      'admin.translations',
+     'admin.roles',
      'admin.users',
      'admin.emails',
-     'admin.logs'
+     'admin.logs',
+     'simplemde',
+     'ng-showdown'
 ])
     .config(function ($stateProvider, $urlRouterProvider, $httpProvider, jwtInterceptorProvider, RestangularProvider, $translateProvider, $locationProvider, cfpLoadingBarProvider) {
         let config = window.OpenLoyaltyConfig;
@@ -259,37 +269,29 @@ angular.module('OpenLoyalty', [
         }
     })
 
-    .run(['Restangular', '$state', 'AuthService', '$rootScope', '$templateCache', function (Restangular, $state, AuthService, $rootScope, $templateCache) {
+    .run(['Restangular', '$state', 'AuthService', '$rootScope', '$templateCache', function (Restangular, $state, AuthService, $rootScope, $templateCache, Flash) {
         $rootScope.pendingRequests = _.isNumber($rootScope.pendingRequests) ? $rootScope.pendingRequests : 0;
         Restangular.setErrorInterceptor(function (response) {
-            //console.log('ErrorInterceptor', response);
             $rootScope.pendingRequests -= 1;
-            if (response.data.message && response.data.message === 'Bad credentials') {
-                return true;
-            }
+
             if (response.status === 401) {
                 AuthService.logout();
-                return false;
             }
             return true;
         });
         Restangular.addResponseInterceptor(res => {
-            //console.log('ResponseInterceptor', res, res.reqParams);
             if ($rootScope.pendingRequests > 0) {
                 $rootScope.pendingRequests -= 1;
             }
-            //console.log('pending request', $rootScope.pendingRequests)
 
             return res;
         });
         Restangular.addFullRequestInterceptor((element, operation, what, url, headers, params) => {
             //filter[silenceQuery]: true
-            //console.log('requestInterceptor', element, operation, what, url, headers, params);
             console.log('pendingRequest', $rootScope.pendingRequests)
             if (!params.silenceQuery) {
                 $rootScope.pendingRequests += 1;
             }
-            //console.log('pending request', $rootScope.pendingRequests)
 
             return element;
         });
@@ -302,17 +304,21 @@ angular.module('OpenLoyalty', [
     .filter('percent', () => new Filters.Percent())
     .filter('propsFilter', () => new Filters.PropsFilter())
     .filter('isEmpty', () => new Filters.IsEmptyFilter())
+    .filter('roundPoints', () => new Filters.RoundPoints())
 
+    .directive('toggleControl', () => new ToggleControlDirective())
     .directive('modal', () => new ModalDirective())
     .directive('datepicker', () => new DatepickerDirective())
     .directive('formValidation', () => new FormValidationDirective())
     .directive('csvUpload', () => new CsvUploadDirective())
+    .directive('xmlUpload', () => new XmlUploadDirective())
     .directive('checkbox', () => new CheckboxDirective())
     .directive('staticPage', () => new StaticPagesDirective())
     .directive('fileModel', FileModelDirective.create)
     .directive('boxLoader', BoxLoaderDirective.create)
     .directive('spinnerLoader', SpinnerLoaderDirective.create)
-
+    .directive('adminFieldsetRow', () => new AdminFieldsetRowDirective())
+    .directive('adminFieldsetBlock', () => new AdminFieldsetBlockDirective())
 
     .service('EditableMap', EditableMap)
     .service('ParamsMap', ParamsMap)

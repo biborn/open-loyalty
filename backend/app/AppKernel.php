@@ -9,7 +9,7 @@ use Symfony\Component\Config\Loader\LoaderInterface;
 
 class AppKernel extends Kernel
 {
-    public function registerBundles()
+    public function registerBundles(): array
     {
         $bundles = [
             new Symfony\Bundle\FrameworkBundle\FrameworkBundle(),
@@ -28,26 +28,35 @@ class AppKernel extends Kernel
             new Nelmio\CorsBundle\NelmioCorsBundle(),
             new JMS\SerializerBundle\JMSSerializerBundle(),
             new Gesdinet\JWTRefreshTokenBundle\GesdinetJWTRefreshTokenBundle(),
+            new Misd\PhoneNumberBundle\MisdPhoneNumberBundle(),
+            new Knp\DoctrineBehaviors\Bundle\DoctrineBehaviorsBundle(),
+            new A2lix\AutoFormBundle\A2lixAutoFormBundle(),
+            new A2lix\TranslationFormBundle\A2lixTranslationFormBundle(),
+            new OpenLoyalty\Bundle\SettingsBundle\OpenLoyaltySettingsBundle(),
             new OpenLoyalty\Bundle\UserBundle\OpenLoyaltyUserBundle(),
             new OpenLoyalty\Bundle\LevelBundle\OpenLoyaltyLevelBundle(),
             new OpenLoyalty\Bundle\PointsBundle\OpenLoyaltyPointsBundle(),
-            new OpenLoyalty\Bundle\SettingsBundle\OpenLoyaltySettingsBundle(),
             new OpenLoyalty\Bundle\TransactionBundle\OpenLoyaltyTransactionBundle(),
             new OpenLoyalty\Bundle\EarningRuleBundle\OpenLoyaltyEarningRuleBundle(),
             new OpenLoyalty\Bundle\PosBundle\OpenLoyaltyPosBundle(),
             new OpenLoyalty\Bundle\SegmentBundle\OpenLoyaltySegmentBundle(),
             new OpenLoyalty\Bundle\EmailBundle\OpenLoyaltyEmailBundle(),
-            new OpenLoyalty\Bundle\SmsApiBundle\OpenLoyaltySmsApiBundle(),
+            new OpenLoyalty\Bundle\ActivationCodeBundle\OpenLoyaltyActivationCodeBundle(),
             new OpenLoyalty\Bundle\PaginationBundle\OpenLoyaltyPaginationBundle(),
             new OpenLoyalty\Bundle\CampaignBundle\OpenLoyaltyCampaignBundle(),
+            new OpenLoyalty\Bundle\SmsApiBundle\OpenLoyaltySmsApiBundle(),
             new OpenLoyalty\Bundle\AnalyticsBundle\OpenLoyaltyAnalyticsBundle(),
             new OpenLoyalty\Bundle\UtilityBundle\OpenLoyaltyUtilityBundle(),
-            new OpenLoyalty\Bundle\PluginBundle\OpenLoyaltyPluginBundle(),
             new OpenLoyalty\Bundle\AuditBundle\OpenLoyaltyAuditBundle(),
             new OpenLoyalty\Bundle\EmailSettingsBundle\OpenLoyaltyEmailSettingsBundle(),
+            new OpenLoyalty\Bundle\TranslationBundle\OpenLoyaltyTranslationBundle(),
             new Knp\Bundle\GaufretteBundle\KnpGaufretteBundle(),
             new OpenLoyalty\Bundle\CoreBundle\OpenLoyaltyCoreBundle(),
             new OpenLoyaltyPlugin\SalesManagoBundle\SalesManagoBundle(),
+            new OpenLoyalty\Bundle\ImportBundle\OpenLoyaltyImportBundle(),
+            new OpenLoyalty\Bundle\WorldTextBundle\OpenLoyaltyWorldTextBundle(),
+            new OpenLoyalty\Bundle\MarkDownBundle\OpenLoyaltyMarkDownBundle(),
+            new Doctrine\Bundle\MigrationsBundle\DoctrineMigrationsBundle(),
         ];
 
         if (in_array($this->getEnvironment(), ['dev', 'test'], true)) {
@@ -60,22 +69,22 @@ class AppKernel extends Kernel
         return $bundles;
     }
 
-    public function getRootDir()
+    public function getRootDir(): string
     {
         return __DIR__;
     }
 
-    public function getCacheDir()
+    public function getCacheDir(): string
     {
         return dirname(__DIR__).'/var/cache/'.$this->getEnvironment();
     }
 
-    public function getLogDir()
+    public function getLogDir(): string
     {
         return dirname(__DIR__).'/var/logs';
     }
 
-    public function registerContainerConfiguration(LoaderInterface $loader)
+    public function registerContainerConfiguration(LoaderInterface $loader): void
     {
         $loader->load($this->getRootDir().'/config/config_'.$this->getEnvironment().'.yml');
     }

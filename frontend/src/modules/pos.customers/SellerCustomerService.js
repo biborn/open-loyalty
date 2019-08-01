@@ -21,11 +21,17 @@ export default class SellerCustomerService {
     }
 
     postCustomer(newCustomer) {
-        return this.Restangular.one('seller').one('customer').one('register').customPOST({customer: newCustomer})
+        let self = this;
+
+        return this.Restangular.one('seller').one('customer').one('register').customPOST({customer: self.EditableMap.newCustomer(newCustomer)})
     }
 
     getLevels(params) {
         return this.Restangular.one('seller').all('level').getList(params);
+    }
+
+    getPosSeller(sellerId) {
+        return this.Restangular.one('seller', sellerId).get();
     }
 
     getPosList(params) {
@@ -64,6 +70,14 @@ export default class SellerCustomerService {
         return this.Restangular.one('seller').all('transaction').getList(params);
     }
 
+    postPosAddTransfer(newTransfer) {
+        return this.Restangular.one('pos').one('points').one('transfer').one('add').customPOST({transfer:newTransfer});
+    }
+
+    postPosSpendTransfer(newTransfer) {
+        return this.Restangular.one('pos').one('points').one('transfer').one('spend').customPOST({transfer:newTransfer});
+    }
+
     getCustomerTransfers(params, customerId) {
         params.customerId = customerId;
 
@@ -89,6 +103,14 @@ export default class SellerCustomerService {
 
     deactivateCustomer(customerId) {
         return this.Restangular.one('seller').one('customer', customerId).one('deactivate').customPOST();
+    }
+
+    activateCustomer(customerId, token) {
+        return this.Restangular.one('customer').one('activate-sms', token).customPOST();
+    }
+
+    resendActivationCode(customerId) {
+        return this.Restangular.one('seller').one('customer', customerId).one('send-sms-code').customPOST();
     }
 }
 

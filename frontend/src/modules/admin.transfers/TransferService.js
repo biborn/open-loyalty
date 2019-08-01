@@ -1,7 +1,33 @@
 export default class TransferService {
-    constructor(Restangular, EditableMap) {
+    constructor(Restangular, EditableMap, $filter) {
         this.Restangular = Restangular;
         this.EditableMap = EditableMap;
+        this.$filter = $filter;
+
+        this.transferTypeConfig = {
+            valueField: 'type',
+            labelField: 'name',
+            create: false,
+            maxItems: 1,
+        };
+        this.transferType = [
+            {
+                name: this.$filter('translate')('transfer.spend_points'),
+                type: 'spend'
+            },
+            {
+                name: this.$filter('translate')('transfer.add_points'),
+                type: 'add'
+            }
+        ];
+    }
+
+    getTransferTypeConfig() {
+        return this.transferTypeConfig;
+    }
+
+    getTransferType() {
+        return this.transferType;
     }
 
     getTransfers(params) {
@@ -20,6 +46,20 @@ export default class TransferService {
         return this.Restangular.one('points').one('transfer', transferId).one('cancel').post();
     }
 
+    postImportTransfer(file) {
+        var formData = new FormData();
+        formData.append('file[file]', file);
+
+        return this.Restangular
+            .one('points')
+            .one('transfer')
+            .one('import')
+            .withHttpConfig({
+                transformRequest: angular.identity,
+                timeout: 0
+            })
+            .customPOST(formData, '', undefined, {'Content-Type': undefined})
+    }
 }
 
-TransferService.$inject = ['Restangular', 'EditableMap'];
+TransferService.$inject = ['Restangular', 'EditableMap', '$filter'];

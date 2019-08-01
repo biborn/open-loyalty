@@ -15,6 +15,9 @@ export default class CampaignService {
         this.EditableMap = EditableMap;
         this.campaigns = null;
         this._campaignFileError = {};
+        this.campaignRequireTransaction = [
+            'percentage_discount_code'
+        ];
     }
 
     /**
@@ -53,6 +56,41 @@ export default class CampaignService {
      */
     getStoredCampaigns() {
         return this.campaigns;
+    }
+
+    /**
+    * Stores category in service
+    *
+    * @method setStoredCategories
+    * @param categories
+    */
+    setStoredCategories(categories) {
+        this.categories = categories;
+    }
+
+    /**
+    * Returns stored campaign categories
+    *
+    * @method getStoredCampaigns
+    * @returns {Object|null}
+    */
+    getStoredCategories() {
+        return this.categories;
+    }
+
+    /**
+    * Calls to post new category
+    *
+    * @method postCategory
+    * @param newCategory
+    * @returns {Promise}
+    */
+    postCategory(newCategory) {
+        let self = this;
+
+        return this.Restangular
+            .one('campaignCategory')
+            .customPOST({campaign_category: self.EditableMap.campaignCategory(newCategory)})
     }
 
     /**
@@ -97,12 +135,12 @@ export default class CampaignService {
     /**
      * Calls for post image to campaign
      *
-     * @method postCampaignImage
+     * @method postCampaignImages
      * @param {Integer} campaignId
      * @param {Object} data
      * @returns {Promise}
      */
-    postCampaignImage(campaignId, data) {
+    postCampaignImages(campaignId, data) {
         let fd = new FormData();
 
         fd.append('photo[file]', data);
@@ -115,16 +153,17 @@ export default class CampaignService {
     }
 
     /**
-     * Calls for campain image
+     * Calls for campain images
      *
-     * @method getCampaignImage
+     * @method getCampaignImages
      * @param {Integer} campaignId
+     * @param {Integer} photoId
      * @returns {Promise}
      */
-    getCampaignImage(campaignId) {
+    getCampaignImages(campaignId, photoId) {
         return this.Restangular
             .one('campaign', campaignId)
-            .one('photo')
+            .one('photo', photoId)
             .get()
     }
 
@@ -133,12 +172,61 @@ export default class CampaignService {
      *
      * @method deleteCampaignImage
      * @param {Integer} campaignId
+     * @param {Integer} photoId
      * @returns {Promise}
      */
-    deleteCampaignImage(campaignId) {
+    deleteCampaignImage(campaignId, photoId) {
         return this.Restangular
             .one('campaign', campaignId)
-            .one('photo')
+            .one('photo', photoId)
+            .remove()
+    }
+
+    /**
+     * Calls for post brand icon to campaign
+     *
+     * @method postCampaignBrandIcon
+     * @param {Integer} campaignId
+     * @param {Object} data
+     * @returns {Promise}
+     */
+    postCampaignBrandIcon(campaignId, data) {
+        let fd = new FormData();
+
+        fd.append('brand_icon[file]', data);
+
+        return this.Restangular
+            .one('campaign', campaignId)
+            .one('brand_icon')
+            .withHttpConfig({transformRequest: angular.identity})
+            .customPOST(fd, '', undefined, {'Content-Type': undefined});
+    }
+
+    /**
+     * Calls for campain brand icon
+     *
+     * @method getCampaignBrandIcon
+     * @param {Integer} campaignId
+     * @returns {Promise}
+     */
+    getCampaignBrandIcon(campaignId) {
+        return this.Restangular
+            .one('campaign', campaignId)
+            .one('brand_icon')
+            .get()
+    }
+
+    /**
+     * Calls to remove campaign brand icon
+     *
+     * @method deleteCampaignBrandIcon
+     * @param {Integer} campaignId
+     * @returns {Promise}
+     */
+    deleteCampaignBrandIcon(campaignId) {
+        return this.Restangular
+            .one('campaign', campaignId)
+            .one('brand_icon')
             .remove()
     }
 
@@ -189,6 +277,136 @@ export default class CampaignService {
             .getList(params);
     }
 
+    /**
+     * Calls for redeemed campaign rewards
+     *
+     * @method getRedeemedCampaignRewards
+     * @param {Object} params
+     * @returns {Promise}
+     */
+    getRedeemedCampaignRewards(params = {}) {
+        return this.Restangular
+            .one('campaign')
+            .all('bought')
+            .getList(params);
+    }
+
+    getBoughtReport(params = {}) {
+        return this.Restangular
+            .all('campaign')
+            .all('bought')
+            .all('export')
+            .one('csv')
+            .withHttpConfig({responseType: 'blob'}).customGET("", params);
+    }
+
+    postBuyCampaignManually(params){
+        return this.Restangular
+            .one('admin')
+            .one('customer', params.customerId)
+            .one('campaign', params.campaignId)
+            .one('buy')
+            .customPOST(
+                {
+                    withoutPoints: params.withoutPoints,
+                    transactionId: params.transactionId,
+                    quantity: params.quantity
+                }
+            )
+    }
+
+    /**
+     * Calls for delivery statuses
+     *
+     * @method getDeliveryStatuses
+     * @returns {Promise}
+     */
+    getDeliveryStatuses() {
+        return this.Restangular.one('settings').one('choices').one('deliveryStatus').get();
+    }
+
+
+    /**
+     * Change delivery status
+     *
+     * @method putDeliveryStatus
+     * @param {Object} deliveryStatus
+     * @param {Integer} customerId
+     * @param {Integer} couponId
+     * @returns {Promise}
+     */
+    putDeliveryStatus(deliveryStatus, customerId, couponId) {
+        let self = this;
+
+        return self.Restangular.one('admin').one('customer', customerId).one('bought').one('coupon', couponId).one('changeDeliveryStatus')
+            .customPUT({ deliveryStatus: { status: deliveryStatus} });
+    }
+
+    /**
+     * Calls for campaign categories
+     *
+     * @method getCategories
+     * @returns {Promise}
+     */
+    getCategories(params = {}) {
+        return this.Restangular.all('campaignCategory').getList(params);
+    }
+
+
+    /**
+     * Calls single category details
+     *
+     * @method getCategory
+     * @param {String} campaignCategoryId
+     * @returns {Promise}
+     */
+    getCategory(campaignCategoryId) {
+        return this.Restangular.one('campaignCategory', campaignCategoryId).get();
+    }
+
+    /**
+     * Calls for edit category
+     *
+     * @method putCategory
+     * @param {Object} editedCategory
+     * @returns {Promise}
+     */
+    putCategory(campaignCategoryId, editedCategory) {
+        let self = this;
+
+        return self.Restangular.one('campaignCategory', campaignCategoryId)
+            .customPUT({campaign_category: self.Restangular.stripRestangular(self.EditableMap.campaignCategory(editedCategory))});
+    }
+
+    /**
+    * Calls to set category state
+    *
+    * @method setCategoryState
+    * @param {Integer} campaignCategoryId
+    * @param {Boolean} active
+    * @returns {Promise}
+    */
+    setCategoryState(campaignCategoryId, active) {
+        return this.Restangular
+            .one('campaignCategory', campaignCategoryId)
+            .one('active')
+            .customPOST({active: active})
+    }
+
+    /**
+     * Calls for get earninig rule
+     *
+     * @method getConnectTypeEarningRule
+     * @param {String} earningRuleType
+     * @returns {Promise}
+     */
+    getConnectTypeEarningRule(earningRuleType) {
+        let params = {
+            "type": earningRuleType,
+            "paginated": 0
+        };
+        return this.Restangular.all('earningRule').getList(params);
+    }
 }
 
 CampaignService.$inject = ['Restangular', 'EditableMap'];

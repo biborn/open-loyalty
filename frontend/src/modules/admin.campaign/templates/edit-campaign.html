@@ -6,13 +6,70 @@
 
 <div style="clear:both;"></div>
 
-
 <form novalidate ng-submit="CampaignCtrl.editCampaign(editableFields)">
     <div class="box-content">
         <div class="row">
             <div class="columns medium-12">
-                <fieldset class="fieldset">
-                    <legend>{{ "campaign.type_info" | translate }}</legend>
+
+                <admin-fieldset-block ng-repeat="language in availableFrontendTranslations | orderBy: 'order'" fieldset-label="{{ ('level.basic_info' | translate) + ' (' + language.name + ')' }}" togglable="true" togglable-active="{{ language.default }}">
+                    <admin-fieldset-row
+                        ng-repeat="field in translatableFields"
+                        row-label="{{ field.label }}"
+                        row-prompt="{{ field.prompt }}"
+                        is-required="{{ language.default && field.required }}"
+                        input-model="editableFields.translations[language.code][field.key]"
+                        validate-by="validate.translations[language.code][field.key].errors">
+                    </admin-fieldset-row>
+
+                    <admin-fieldset-row
+                            row-label="campaign.short_description"
+                            row-prompt="campaign.short_description_prompt"
+                            is-required="false"
+                            input-type="simplemde"
+                            input-model="editableFields.translations[language.code].shortDescription"
+                            validate-by="validate.translations[language.code].shortDescription.errors">
+                    </admin-fieldset-row>
+
+                    <admin-fieldset-row
+                        ng-if="editableFields.reward && editableFields.reward != 'cashback' && editableFields.reward != 'percentage_discount_code'"
+                        row-label="campaign.conditions_description"
+                        row-prompt="campaign.conditions_description_prompt"
+                        is-required="false"
+                        input-type="simplemde"
+                        input-model="editableFields.translations[language.code].conditionsDescription"
+                        validate-by="validate.translations[language.code].conditionsDescription.errors">
+                    </admin-fieldset-row>
+
+                    <admin-fieldset-row
+                        ng-if="editableFields.reward && editableFields.reward != 'cashback' && editableFields.reward != 'percentage_discount_code' && editableFields.reward !== 'custom_campaign_code'"
+                        row-label="campaign.usage_instruction"
+                        row-prompt="campaign.usage_instruction_prompt"
+                        is-required="false"
+                        input-type="simplemde"
+                        input-model="editableFields.translations[language.code].usageInstruction"
+                        validate-by="validate.translations[language.code].usageInstruction.errors">
+                    </admin-fieldset-row>
+
+                    <admin-fieldset-row
+                        row-label="campaign.brand_name"
+                        row-prompt="campaign.brand_name_prompt"
+                        is-required="false"
+                        input-model="editableFields.translations[language.code].brandName"
+                        validate-by="validate.translations[language.code].brandName.errors">
+                    </admin-fieldset-row>
+
+                    <admin-fieldset-row
+                        row-label="campaign.brand_description"
+                        row-prompt="campaign.brand_description_prompt"
+                        is-required="false"
+                        input-type="simplemde"
+                        input-model="editableFields.translations[language.code].brandDescription"
+                        validate-by="validate.translations[language.code].brandDescription.errors">
+                    </admin-fieldset-row>
+
+                </admin-fieldset-block>
+
+                <admin-fieldset-block fieldset-label="campaign.type_info">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.type" | translate }} <span class="required">*</span></label>
@@ -24,27 +81,18 @@
                             <span class="prompt">{{ "campaign.type_prompt" | translate }} </span>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="fieldset">
-                    <legend>{{ "campaign.basic_info" | translate }}</legend>
-                    <div class="row">
+                    <div class="row" ng-if="editableFields.reward === 'gift_code'">
                         <div class="medium-2 small-3 columns">
-                            <label>{{ "campaign.name" | translate }} <span class="required">*</span></label>
+                            <label>{{ "campaign.fulfillment_tracking" | translate }} </label>
                         </div>
-                        <div class="medium-10 small-9 columns" form-validation="validate.name.errors">
-                            <input type="text" ng-model="editableFields.name" required>
-                            <span class="prompt">{{ "campaign.name_prompt" | translate }} </span>
+                        <div class="medium-10 small-9 columns" >
+                            <checkbox ng-model="editableFields.fulfillmentTracking"></checkbox>
+                            <span class="prompt">{{ "campaign.fulfillment_tracking_prompt" | translate }} </span>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="medium-2 small-3 columns">
-                            <label>{{ "campaign.short_description" | translate }} </label>
-                        </div>
-                        <div class="medium-10 small-9 columns" form-validation="validate.shortDescription.errors">
-                            <input type="text" ng-model="editableFields.shortDescription"/>
-                            <span class="prompt">{{ "campaign.short_description_prompt" | translate }} </span>
-                        </div>
-                    </div>
+                </admin-fieldset-block>
+
+                <admin-fieldset-block fieldset-label="campaign.basic_info">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.more_information_link" | translate }} </label>
@@ -54,6 +102,17 @@
                             <span class="prompt">{{ "campaign.more_information_link_prompt" | translate }} </span>
                         </div>
                     </div>
+
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.push_notification_text" | translate }} </label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.pushNotificationText.errors">
+                            <input type="text" ng-model="editableFields.pushNotificationText"/>
+                            <span class="prompt">{{ "campaign.push_notification_text_prompt" | translate }} </span>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.active" | translate }}</label>
@@ -66,29 +125,208 @@
                             <span class="prompt">{{ "campaign.active_prompt" | translate }} </span>
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row" ng-if="editableFields.reward && editableFields.reward == 'percentage_discount_code'">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.transaction_percentage_value" | translate }}<span
+                                    class="required">*</span></label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.transactionPercentageValue.errors">
+                            <input type="number" ng-model="editableFields.transactionPercentageValue" required step="1">
+                            <span class="prompt">{{ "campaign.transaction_percentage_value_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row" ng-if="editableFields.reward !== 'cashback' && editableFields.reward !== 'custom_campaign_code'">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.days_inactive" | translate }}<span
+                                    class="required">*</span></label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.daysInactive.errors">
+                            <input type="number" ng-model="editableFields.daysInactive" required step="1">
+                            <span class="prompt">{{ "campaign.days_inactive_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row" ng-if="editableFields.reward !== 'cashback' && editableFields.reward !== 'custom_campaign_code'">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.days_valid" | translate }}<span
+                                    class="required">*</span></label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.daysValid.errors">
+                            <input type="number" ng-model="editableFields.daysValid" required step="1">
+                            <span class="prompt">{{ "campaign.days_valid_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row"
+                         ng-if="editableFields.reward && editableFields.reward != 'cashback'
+                            && editableFields.reward != 'percentage_discount_code'
+                            && editableFields.reward !== 'custom_campaign_code'">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.cost_in_points" | translate }} <span
                                     class="required">*</span></label>
                         </div>
                         <div class="medium-10 small-9 columns" form-validation="validate.costInPoints.errors">
-                            <input type="number" ng-model="editableFields.costInPoints" step="0.5" required>
+                            <input type="number" ng-model="editableFields.costInPoints" required step="0.5">
                             <span class="prompt">{{ "campaign.cost_in_points_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row" ng-if="editableFields.reward && editableFields.reward == 'cashback'">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.point_value" | translate }} <span
+                                    class="required">*</span></label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.pointValue.errors">
+                            <input type="number" ng-model="editableFields.pointValue" required step="0.5">
+                            <span class="prompt">{{ "campaign.point_value_prompt" | translate }} </span>
                         </div>
                     </div>
                     <div class="row">
                         <div class="medium-2 small-3 columns">
-                            <label>{{ "campaign.conditions_description" | translate }} </label>
+                            <label>{{ "campaign.reward_value" | translate }}</label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.rewardValue.errors">
+                            <input type="number" ng-model="editableFields.rewardValue" step="0.01">
+                            <span class="prompt">{{ "campaign.reward_value_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.tax" | translate }}</label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.tax.errors">
+                            <input type="number" ng-model="editableFields.tax" step="1">
+                            <span class="prompt">{{ "campaign.tax_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.tax_price_value" | translate }}</label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.taxPriceValue.errors">
+                            <input type="number" ng-model="editableFields.taxPriceValue" step="0.01">
+                            <span class="prompt">{{ "campaign.tax_price_value_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-bottom: 20px;">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.labels" | translate }}</label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.labels.errors">
+                            <div class="collection"
+                                 ng-repeat="label in editableFields.labels track by $index">
+                                <div class="row">
+                                    <div class="medium-2 small-3 columns">
+                                        <label>{{ "campaign.key" | translate }} <span
+                                                class="required">*</span></label>
+                                    </div>
+                                    <div class="medium-10 small-9 columns"
+                                         form-validation="validate.labels[$index].key.errors">
+                                        <input ng-model="editableFields.labels[$index].key">
+                                        <span class="prompt">{{ "campaign.label_key_prompt" | translate }}</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="medium-2 small-3 columns">
+                                        <label>{{ "campaign.value" | translate }} <span
+                                                class="required">*</span></label>
+                                    </div>
+                                    <div class="medium-10 small-9 columns"
+                                         form-validation="validate.labels[$index].value.errors">
+                                        <input ng-model="editableFields.labels[$index].value">
+                                        <span class="prompt">{{ "campaign.label_value_prompt" | translate }}</span>
+                                    </div>
+                                </div>
+
+                                <button type="button" class="remove-collection"
+                                        ng-click="CampaignCtrl.removeLabel($index, true)">
+                                    <i class="fa fa-trash-o" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <button type="button" class="button button-secondary tiny"
+                                    ng-click="CampaignCtrl.addLabel(true)">{{
+                                "campaign.add_label" | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.categories" | translate }} </label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.categories.errors">
+                            <selectize config="CampaignCtrl.categoriesConfig"
+                                       options="CampaignCtrl.categories"
+                                       ng-model="editableFields.categories">
+                            </selectize>
+                            <span class="prompt">{{ "campaign.categories_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.featured" | translate }} </label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.featured.errors">
+                            <checkbox ng-model="editableFields.featured"></checkbox>
+                            <span class="prompt">{{ "campaign.featured_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.public" | translate }} </label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.public.errors">
+                            <checkbox ng-model="editableFields.public"></checkbox>
+                            <span class="prompt">{{ "campaign.public_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row" ng-if="editableFields.reward == 'custom_campaign_code'">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.connect_type.heading" | translate }} <span class="required">*</span></label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.connectType.errors">
+                            <selectize config="CampaignCtrl.connectTypeConfig"
+                                       options="CampaignCtrl.connectType"
+                                       ng-init="editableFields.connectType='none'"
+                                       ng-model="editableFields.connectType"
+                                       ng-change="CampaignCtrl.getConnectTypeEarningRule(editableFields.connectType)">
+                            </selectize>
+                            <span class="prompt">{{ "campaign.connect_type_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                    <div class="row" ng-if="editableFields.reward == 'custom_campaign_code' && editableFields.connectType && editableFields.connectType != 'none'">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.earning_rule" | translate }} <span class="required">*</span></label>
+                        </div>
+                        <div class="medium-10 small-9 columns" form-validation="validate.earningRuleId.errors">
+                            <selectize config="CampaignCtrl.earningRuleIdConfig"
+                                       options="CampaignCtrl.earningRuleId"
+                                       ng-model="editableFields.earningRuleId">
+                            </selectize>
+                            <span class="prompt">{{ "campaign.earning_rule_prompt" | translate }} </span>
+                        </div>
+                    </div>
+                </admin-fieldset-block>
+                <fieldset class="fieldset">
+                    <legend>{{ "campaign.brand_info" | translate }}</legend>
+                    <div class="row">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.brand_icon" | translate }}</label>
                         </div>
                         <div class="medium-10 small-9 columns"
-                             form-validation="validate.conditionsDescription.errors">
-                            <input type="text" ng-model="editableFields.conditionsDescription"/>
-                            <span class="prompt">{{ "campaign.coditions_description_prompt" | translate }} </span>
+                             form-validation="brandIconFileValidate.file.errors">
+                            <div ng-show="!campaignBrandIconFilePath">
+                                <input type="file" file-model="$parent.$parent.campaignBrandIconFile">
+                            </div>
+                            <div ng-show="campaignBrandIconFilePath" class="campainFileWrapper">
+                                <img ng-src="{{CampaignCtrl.generateBrandIconRoute()}}" style="display: inline-block;"/>
+                                <button class="button button-septenary-colorized text-uppercase"
+                                        style="margin-bottom:0; padding:0.95em; vertical-align: top; display: inline-block;"
+                                        type="button"
+                                        ng-click="CampaignCtrl.deleteBrandIcon()">
+                                    {{ "global.remove" | translate }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </fieldset>
-                <fieldset class="fieldset">
-                    <legend>Target</legend>
+                <admin-fieldset-block fieldset-label="campaign.target">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.target_type" | translate }} </label>
@@ -123,9 +361,10 @@
                             <span class="prompt">{{ "campaign.segments_prompt" | translate }} </span>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="fieldset">
-                    <legend>{{ "campaign.limit_info" | translate }}</legend>
+                </admin-fieldset-block>
+
+                <admin-fieldset-block fieldset-label="campaign.limit_info"
+                                      ng-if="editableFields.reward && editableFields.reward != 'cashback' && editableFields.reward != 'percentage_discount_code' && editableFields.reward !== 'custom_campaign_code'">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.unlimited" | translate }} </label>
@@ -163,17 +402,20 @@
                             <span class="prompt">{{ "campaign.limit_per_user_prompt" | translate }} </span>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="fieldset">
-                    <legend>{{ "campaign.coupons_info" | translate }}</legend>
+                </admin-fieldset-block>
+
+                <admin-fieldset-block fieldset-label="campaign.coupons_info" ng-if="editableFields.reward && editableFields.reward != 'cashback' && editableFields.reward !== 'custom_campaign_code' && editableFields.reward !== 'percentage_discount_code'">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.coupons" | translate }} <span
                                     class="required">*</span></label>
                         </div>
                         <div class="medium-10 small-9 columns" form-validation="validate.coupons.errors">
-                            <selectize config="CampaignCtrl.couponsConfig" options="CampaignCtrl.egCoupon"
-                                       ng-model="editableFields.coupons"></selectize>
+                            <selectize 
+                                config="CampaignCtrl.couponsConfig" 
+                                options="CampaignCtrl.coupons"
+                                ng-model="editableFields.coupons">
+                            </selectize>
                             <span class="prompt">{{ "campaign.coupons_prompt" | translate }} </span>
                         </div>
                     </div>
@@ -186,19 +428,10 @@
                             <span class="prompt">{{ "campaign.coupons_upload_prompt" | translate }} </span>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="medium-2 small-3 columns">
-                            <label>{{ "campaign.usage_instruction" | translate }} </label>
-                        </div>
-                        <div class="medium-10 small-9 columns"
-                             form-validation="validate.usageInstruction.errors">
-                            <input type="text" ng-model="editableFields.usageInstruction"/>
-                            <span class="prompt">{{ "campaign.usage_instruction_prompt" | translate }} </span>
-                        </div>
-                    </div>
-                </fieldset>
-                <fieldset class="fieldset">
-                    <legend>{{ "campaign.visibility" | translate }}</legend>
+                </admin-fieldset-block>
+
+                <admin-fieldset-block fieldset-label="campaign.visibility"
+                                      ng-if="editableFields.reward && editableFields.reward != 'cashback' && editableFields.reward != 'percentage_discount_code'">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.all_time_visible" | translate }}</label>
@@ -238,9 +471,9 @@
                             <span class="prompt">{{ "campaign.visible_to_prompt" | translate }} </span>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="fieldset">
-                    <legend>{{ "campaign.activity" | translate }}</legend>
+                </admin-fieldset-block>
+
+                <admin-fieldset-block fieldset-label="campaign.activity">
                     <div class="row">
                         <div class="medium-2 small-3 columns">
                             <label>{{ "campaign.all_time_active" | translate }}</label>
@@ -277,27 +510,53 @@
                             <span class="prompt">{{ "campaign.active_to_prompt" | translate }} </span>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="fieldset">
+                </admin-fieldset-block>
+
+                <fieldset class="fieldset"
+                          ng-show="editableFields.reward && editableFields.reward != 'cashback'
+                            && editableFields.reward != 'percentage_discount_code'">
                     <legend>{{ "campaign.photo" | translate }}</legend>
                     <div class="row">
                         <div class="medium-2 small-3 columns">
-                            <label>{{ "campaign.photo" | translate }}</label>
+                            <label>{{ "campaign.add_photo" | translate }}</label>
                         </div>
-                        <div class="medium-10 small-9 columns"
-                             form-validation="fileValidate.file.errors">
-                            <div ng-show="!campaignFilePath">
-                                <input type="file" file-model="$parent.$parent.campaignFile" style="padding:9px">
+                        <div class="medium-10 small-9 columns">
+                            <div data-ng-repeat="input in CampaignCtrl.campaignFiles">
+                                <div form-validation="fileValidate.file.errors" ng-show="CampaignCtrl.campaignFiles[$index].visible">
+                                    <input type="file" class="input-file" name="name{{$index}}" file-model="CampaignCtrl.campaignFiles[{{$index}}].file">
+                                    <button ng-hide="$index === 0" class="icon-button" ng-click="CampaignCtrl.removeFileInput($event, CampaignCtrl.campaignFiles[$index].id)"><span class="fa fa-remove"></span></button>
+                                    <span class="error-msg">
+                                        <span>{{ CampaignCtrl.campaignFiles[$index].error }}</span>
+                                    </span>
+                                </div>
                             </div>
-                            <div ng-show="campaignFilePath" class="campainFileWrapper">
-                                <img ng-src="{{CampaignCtrl.generatePhotoRoute()}}" style="display: inline-block;"/>
-                                <button class="button button-septenary-colorized text-uppercase"
-                                        style="margin-bottom:0; padding:0.95em; vertical-align: top; display: inline-block;"
-                                        type="button"
-                                        ng-click="CampaignCtrl.deletePhoto()">
-                                    {{ "global.remove" | translate }}
-                                </button>
+                            <button class="button button-septenary-colorized text-uppercase" ng-click="CampaignCtrl.addFileInput($event)">
+                                {{ "campaign.add_another" | translate }}
+                            </button>
+
+                        </div>
+                    </div>
+                    <div class="row" ng-show="campaign.photos.length">
+                        <div class="medium-2 small-3 columns">
+                            <label>{{ "campaign.photos" | translate }}</label>
+                        </div>
+                        <div class="medium-10 small-9 columns">
+
+                            <div class="row campaign-photos">
+                                <div class="columns medium-12">
+                                    <div ng-repeat="photo in campaign.photos" class="single-photo">
+                                        <div class="img-wrapper">
+                                            <div class="thumb">
+                                                <img ng-src="{{CampaignCtrl.generateCampaignPhotoRoute(photo.photoId.id)}}" />
+                                                <button type="button" class="button button-secondary clear" ng-click="CampaignCtrl.deletePhoto(photo.photoId.id)">
+                                                    <i class="fa fa-trash-o" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
                 </fieldset>

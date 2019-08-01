@@ -56,7 +56,7 @@
                         </tr>
                         <tr>
                             <td><b>{{ "customer.gender"|translate }}:</b></td>
-                            <td><span ng-bind="customer.gender"></span></td>
+                            <td><span ng-bind="(customer.gender) ? ('customer.'+customer.gender|translate) : ('global.not_set'|translate)"></span></td>
                         </tr>
                         <tr>
                             <td><b>{{ "customer.created_at"|translate }}:</b></td>
@@ -216,16 +216,33 @@
                             <table class="simple" ng-if="customer.levelId">
                                 <tbody>
                                 <tr>
+                                    <td><b>{{ "customer.loyalty.total_points"|translate }}:</b></td>
+                                    <td><span ng-bind="status.totalEarnedPoints|roundPoints"></span></td>
+                                </tr>
+                                <tr ng-if="status.pointsSinceLastLevelRecalculation !== undefined">
+                                    <td><b>{{ "customer.loyalty.total_points_since_last_level_recalculation"|translate }}:</b></td>
+                                    <td><span ng-bind="status.pointsSinceLastLevelRecalculation|roundPoints"></span></td>
+                                </tr>
+                                <tr ng-if="status.levelWillExpireInDays !== undefined">
+                                    <td><b>{{ "customer.loyalty.level_will_expire_in_days"|translate }}:</b></td>
+                                    <td><span ng-bind="status.levelWillExpireInDays"></span><span>{{ "customer.loyalty.level_will_expire_in_days_prompt"|translate }}</span></td>
+                                </tr>
+
+                                <tr>
                                     <td><b>{{ "customer.loyalty.active_points"|translate }}:</b></td>
-                                    <td><span ng-bind="status.points"></span></td>
+                                    <td><span ng-bind="status.points|roundPoints"></span></td>
                                 </tr>
                                 <tr>
                                     <td><b>{{ "customer.loyalty.used_points"|translate }}:</b></td>
-                                    <td><span ng-bind="status.usedPoints"></span></td>
+                                    <td><span ng-bind="status.usedPoints|roundPoints"></span></td>
                                 </tr>
                                 <tr>
                                     <td><b>{{ "customer.loyalty.expired_points"|translate }}:</b></td>
-                                    <td><span ng-bind="status.expiredPoints"></span></td>
+                                    <td><span ng-bind="status.expiredPoints|roundPoints"></span></td>
+                                </tr>
+                                <tr>
+                                    <td><b>{{ "customer.loyalty.locked_points"|translate }}:</b></td>
+                                    <td><span ng-bind="status.lockedPoints|roundPoints"></span></td>
                                 </tr>
                                 </tbody>
                             </table>
@@ -330,6 +347,9 @@
                         <button class="button button-septenary-colorized medium"
                                 ui-sref="seller.panel.single-customer.transfers">{{"customer.all_transfers"|translate}}
                         </button>
+                        <button class="button button-septenary-colorized medium" ng-show="SellerCustomerCtrl.allowPointTransfer"
+                                ng-click="SellerCustomerCtrl.openTransferModal()">{{"customer.add_points_transfer"|translate}}
+                        </button>
 
                     </div>
                     <div class="tabs-panel" id="panel3">
@@ -342,7 +362,7 @@
                                     <span ng-bind="row.active"></span>
                                 </td>
                                 <td data-title="'campaign.cost_in_points'|translate">
-                                    <span ng-bind="row.costInPoints"></span>
+                                    <span ng-bind="row.costInPoints|roundPoints"></span>
                                 </td>
                                 <td data-title="'campaign.limit'|translate">
                                     <span ng-bind="row.limit"></span>
@@ -380,7 +400,7 @@
                                     <span ng-bind="row.campaign.name"></span>
                                 </td>
                                 <td data-title="'campaign.cost_in_points'|translate">
-                                    <span ng-bind="row.costInPoints"></span>
+                                    <span ng-bind="row.costInPoints|roundPoints"></span>
                                 </td>
                                 <td data-title="'campaign.purchase_at'|translate">
                                     <span ng-bind="row.purchaseAt|date : 'yyyy-MM-dd HH:mm'"></span>
@@ -403,6 +423,53 @@
             </div>
         </div>
     </div>
+
+    <modal modalId="showTransferModal" show="showTransferModal" modal-title="'transfer.transfer_points'|translate"
+       size="'tiny-small'">
+        <form novalidate ng-submit="SellerCustomerCtrl.transferPoints(newTransfer, transferType)">
+            <fieldset class="fieldset" style="margin-top:30px">
+                <div class="row">
+                    <div class="columns medium-4">
+                        <label>{{ "transfer.transfer_type" | translate }} <span class="required">*</span></label>
+                    </div>
+                    <div class="columns medium-8" ng-init="transferType='spend'">
+                        <selectize ng-model="transferType" config="SellerCustomerCtrl.transferTypeConfig"
+                                   options="SellerCustomerCtrl.transferType" required>
+                        </selectize>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="columns medium-4">
+                        <label>{{ "transfer.points_to_add" | translate }} <span class="required">*</span></label>
+                    </div>
+                    <div class="columns medium-8" form-validation="validate.points.errors">
+                        <input type="number" min="1" step="0.5" ng-model="newTransfer.points"/>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="columns medium-4">
+                        <label>{{ "transfer.comment" | translate }}</label>
+                    </div>
+                    <div class="columns medium-8" form-validation="validate.comment.errors">
+                        <input type="text" ng-model="newTransfer.comment"/>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="columns small-12 text-center">
+                        <button class="button button-septenary-colorized medium m-t-10 m-b-0" type="submit"
+                                ng-disabled="SellerCustomerCtrl.loaderStates.addTransfer">
+                            {{ "global.save" |translate }}
+                        </button>
+                        <div class="spinner-loader-wrapper">
+                            <spinner-loader loading="SellerCustomerCtrl.loaderStates.addTransfer" class="inline"
+                                            delay="5"></spinner-loader>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+    </modal>
 
     <modal show='assignedLevel.showModal' modalId="{{assignedLevel.id}}" modal-title="'level.special_rewards'|translate"
            size="tiny-small">
@@ -517,7 +584,7 @@
             </tr>
             <tr>
                 <td><b>{{ "customer.gender"|translate }}:</b></td>
-                <td><span ng-bind="customer.gender"></span></td>
+                <td><span>{{ 'customer.' + customer.gender | translate }}</span></td>
             </tr>
             <tr>
                 <td><b>{{ "customer.created_at"|translate }}:</b></td>
@@ -550,6 +617,10 @@
             <tr ng-if="customer.address">
                 <td><b>{{ "customer.country"|translate }}:</b></td>
                 <td><span ng-bind="customer.address.country"></span></td>
+            </tr>
+            <tr ng-if="customer.labels && customer.labels.length > 0">
+                <td><b>{{ "customer.labels"|translate }}:</b></td>
+                <td><div ng-repeat="label in customer.labels"><span ng-bind="label.key" style="font-weight: bold; color: black;"></span>:&nbsp;<span ng-bind="label.value"></span></div></td>
             </tr>
             </tbody>
         </table>

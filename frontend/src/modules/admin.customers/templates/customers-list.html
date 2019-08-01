@@ -3,8 +3,11 @@
 <div class="heading" ng-init="CustomerCtrl.getData()">
     <h1>{{ "customer.heading" | translate }}</h1>
     <div class="action-buttons">
-        <button class="medium button button-septenary-colorized" ui-sref="admin.add-customer">
+        <button ng-show="CustomerCtrl.AuthService.hasPermission('CUSTOMER', 'MODIFY')" class="medium button button-septenary-colorized" ui-sref="admin.add-customer">
             {{ "customer.add" | translate }}
+        </button>
+        <button ng-show="CustomerCtrl.AuthService.hasPermission('CUSTOMER', 'MODIFY')" class="medium button button-septenary-colorized" ng-click="importCustomerModal=true">
+            {{ "customer.import" | translate }}
         </button>
     </div>
 </div>
@@ -32,7 +35,7 @@
                     <span ng-bind="row.email"></span>
                 </td>
                 <td data-title="'customer.gender'|translate" sortable="'gender'">
-                    <span ng-bind="row.gender || ('global.not_set'|translate)"></span>
+                    <span ng-bind="(row.gender) ? ('customer.'+row.gender|translate) : ('global.not_set'|translate)"></span>
                 </td>
                 <td data-title="'customer.birth_date'|translate">
                     <span ng-bind="row.birthDate ? (row.birthDate|date : 'yyyy-MM-dd') : (global.not_set | translate)"></span>
@@ -58,8 +61,17 @@
                     filter="{daysFromLastTransaction: 'number'}">
                     <span ng-bind="row.lastTransactionDate ? (dateNow| amDifference : row.lastTransactionDate : 'days') : ('global.not_set' | translate)"></span>
                 </td>
+                <td data-title="'customer.current_level'|translate" sortable="'level.name'">
+                    <span style="text-transform:uppercase" ng-bind="row.level.name"></span>
+                </td>
+
+                <td data-title="'level.assigned_manually'|translate"
+                    sortable="'manuallyAssignedLevelId'">
+                    <span ng-if="!row.manuallyAssignedLevelId" ng-bind="'global.no'|translate"></span>
+                    <span ng-if="row.manuallyAssignedLevelId" ng-bind="'global.yes'|translate"></span>
+                </td>
                 <td data-title="'customer.actions'|translate">
-                    <button type="button" class="button  button-secondary tiny"
+                    <button ng-show="CustomerCtrl.AuthService.hasPermission('CUSTOMER', 'MODIFY')" type="button" class="button  button-secondary tiny"
                             ui-sref="admin.edit-customer({customerId: row.id})">
                         <i class="fa fa-pencil" aria-hidden="true"></i>
                     </button>
@@ -67,17 +79,48 @@
                             ui-sref="admin.single-customer({customerId: row.id})">
                         <i class="fa fa-search" aria-hidden="true"></i>
                     </button>
-                    <button ng-if="row.active" type="button" class="button button-septenary tiny"
+                    <button ng-show="row.active && CustomerCtrl.AuthService.hasPermission('CUSTOMER', 'MODIFY')" type="button" class="button button-septenary tiny"
                             ng-click="customers[$index].showRemoveModal=true">
                         <i class="fa fa-remove" aria-hidden="true"></i>
                     </button>
-                    <button ng-if="!row.active" type="button" class="button button-septenary tiny"
+                    <button ng-show="!row.active && CustomerCtrl.AuthService.hasPermission('CUSTOMER', 'MODIFY')" type="button" class="button button-septenary tiny"
                             ng-click="customers[$index].showActivateModal=true">
                         <i class="fa fa-plus" aria-hidden="true"></i>
+                    </button>
+                    <button ng-show="row.manuallyAssignedLevelId && CustomerCtrl.AuthService.hasPermission('CUSTOMER', 'MODIFY')" type="button"
+                            class="tiny button button-septenary-colorized"
+                            ng-click="CustomerCtrl.removeManuallyLevel(row.id, true)">
+                        <i class="fa fa-unlink" aria-hidden="true"></i>
                     </button>
                 </td>
             </tr>
         </table>
     </div>
 </div>
+<modal show='importCustomerModal' modalId="importCustomerModal" modal-title="'customer.import_title' | translate">
+    <form novalidate ng-submit="CustomerCtrl.importCustomers(file)">
+        <fieldset class="fieldset default">
+            <div class="row">
+                <div class="columns medium-6">
+                    <label>{{ "customer.import_xml_field" | translate }} </label>
+                </div>
+                <div class="columns medium-6">
+                    <div ng-model="file" xml-upload></div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="columns small-12 text-center">
+                    <button class="button button-septenary-colorized m-t-10 m-b-0" type="submit"
+                            ng-disabled="CustomerCtrl.loaderStates.importCustomers">
+                        {{ "global.import" | translate }}
+                    </button>
+                    <div class="spinner-loader-wrapper">
+                        <spinner-loader loading="CustomerCtrl.loaderStates.importCustomers" class="inline"
+                                        delay="5"></spinner-loader>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</modal>
 <ng-include src="'./templates/customers-list.modals.html'"></ng-include>

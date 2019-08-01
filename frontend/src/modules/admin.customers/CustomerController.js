@@ -3,10 +3,13 @@ export default class CustomerController {
         if (!AuthService.isGranted('ROLE_ADMIN')) {
             $state.go('admin-login')
         }
+
         this.$scope = $scope;
         this.TransferService = TransferService;
+        this.transferTypeConfig = this.TransferService.getTransferTypeConfig();
+        this.transferType = this.TransferService.getTransferType();
         this.$scope.dateNow = new Date();
-        this.$scope.newCustomer = {};
+        this.$scope.newCustomer = {labels: []};
         this.$scope.newLevel = {};
         this.$scope.newPos = {};
         this.$scope.showCompany = false;
@@ -26,7 +29,6 @@ export default class CustomerController {
             firstName: '@assert:not_blank',
             lastName: '@assert:not_blank',
             agreement1: '@assert:not_blank',
-            email: '@assert:not_blank'
         };
         this.levels = null;
         this.posList = null;
@@ -111,7 +113,8 @@ export default class CustomerController {
             cancelTransfer: false,
             assignLevel: false,
             assignPos: false,
-            deactivateCustomer: false
+            deactivateCustomer: false,
+            addTransfer: false
         }
 
         this.referredStatusSelectOptions = [{
@@ -141,6 +144,71 @@ export default class CustomerController {
             maxItems: 1,
             allowEmptyOption: true
         };
+    }
+
+    openTransferModal() {
+        let self = this;
+
+        self.$scope.newTransfer = {};
+        self.$scope.showTransferModal = true;
+    }
+
+    closeTransferModal() {
+        let self = this;
+        self.$scope.showTransferModal = false;
+    }
+
+    transferPoints(newTransfer, type) {
+        let self = this;
+        self.loaderStates.addTransfer = true;
+
+        Object.assign(newTransfer, {
+            'customer':this.customerId
+        });
+
+        switch (type) {
+            case 'add':
+                self.TransferService.postAddTransfer(newTransfer)
+                    .then(
+                        res => {
+                            let message = self.$filter('translate')('xhr.post_add_transfer.success');
+                            self.Flash.create('success', message);
+                            self.transfersTableParams.reload();
+                            self.closeTransferModal();
+                            self.$scope.validate = {};
+                            self.loaderStates.addTransfer = false;
+                        },
+                        res => {
+                            self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
+                            let message = self.$filter('translate')('xhr.post_add_transfer.error');
+                            self.Flash.create('danger', message);
+                            self.loaderStates.addTransfer = false;
+                        }
+                    );
+                break;
+            case 'spend':
+                self.TransferService.postSpendTransfer(newTransfer)
+                    .then(
+                        res => {
+                            let message = self.$filter('translate')('xhr.post_spend_transfer.success');
+                            self.Flash.create('success', message);
+                            self.transfersTableParams.reload();
+                            self.closeTransferModal();
+                            self.$scope.validate = {};
+                            self.loaderStates.addTransfer = false;
+                        },
+                        res => {
+                            self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
+                            let message = self.$filter('translate')('xhr.post_spend_transfer.error');
+                            self.Flash.create('danger', message);
+                            self.loaderStates.addTransfer = false;
+                        }
+                    );
+                break;
+            default:
+                self.loaderStates.addTransfer = false;
+                break;
+        }
     }
 
     getData() {
@@ -256,7 +324,7 @@ export default class CustomerController {
                             dfd.resolve(res);
                         },
                         () => {
-                            let message = self.$filter('translate')('xhr.get_transations.error');
+                            let message = self.$filter('translate')('xhr.get_translations.error');
                             self.Flash.create('danger', message);
                             self.loaderStates.transactionList = false;
                             self.loaderStates.coverLoader = false;
@@ -391,21 +459,6 @@ export default class CustomerController {
                         }
                     ),
 
-                self.CustomerService.getCustomer(self.customerId)
-                    .then(
-                        res => {
-                            self.$scope.customer = res;
-                            self.$scope.editableFields = self.EditableMap.humanizeCustomer(res);
-                            self.$scope.showAddress = !(_.isEmpty(self.$scope.editableFields.address));
-                            self.$scope.showCompany = !(_.isEmpty(self.$scope.editableFields.company));
-                            self.loaderStates.customerDetails = false;
-                        },
-                        () => {
-                            let message = self.$filter('translate')('xhr.get_customer.error');
-                            self.Flash.create('danger', message);
-                            self.loaderStates.customerDetails = false;
-                        }
-                    ),
                 self.CustomerService.getCustomerStatus(self.customerId)
                     .then(
                         res => {
@@ -451,7 +504,7 @@ export default class CustomerController {
         let frontValidation = self.Validation.frontValidation(newCustomer, validateFields);
 
         if (_.isEmpty(frontValidation)) {
-            self.CustomerService.postCustomer(newCustomer)
+            self.CustomerService.postCustomer(self.EditableMap.newCustomer(newCustomer))
                 .then(
                     res => {
                         self.$state.go('admin.customers-list');
@@ -486,6 +539,18 @@ export default class CustomerController {
             validateFields.company = angular.copy(self.$scope.companyValidation);
         } else {
             delete self.$scope.editableFields.company;
+        }
+
+        // sets as an empty string if data has been removed
+        for (let property in editedCustomer) {
+            if (editedCustomer.hasOwnProperty(property)) {
+                if (typeof self.$scope.editableFields[property] === 'undefined' ||
+                    self.$scope.editableFields[property] === ''
+                ) {
+                    editedCustomer[property] = '';
+                    self.$scope.editableFields[property] = '';
+                }
+            }
         }
 
         let frontValidation = self.Validation.frontValidation(editedCustomer, validateFields);
@@ -537,7 +602,7 @@ export default class CustomerController {
     getAvailableLevels() {
         let self = this;
 
-        self.LevelService.getLevels()
+        self.LevelService.getLevels({perPage:-1})
             .then(
                 res => {
                     self.$scope.availableLevels = [];
@@ -659,9 +724,9 @@ export default class CustomerController {
             )
     }
 
-    updateCouponUsage(customerId, campaignId, code, used) {
+    updateCouponUsage(customerId, campaignId, code, couponId, used) {
         let self = this;
-        self.CustomerService.postUsage(customerId, campaignId, code, used).then(
+        self.CustomerService.postUsage(customerId, campaignId, code, couponId, used).then(
             res => {
                 self.getRewardsData();
             },
@@ -731,5 +796,89 @@ export default class CustomerController {
             )
     }
 
+    addLabel(edit) {
+        if (edit) {
+            if (!(this.$scope.editableFields.labels instanceof Array)) {
+                this.$scope.editableFields.labels = [];
+            }
+            this.$scope.editableFields.labels.push({
+                key: '',
+                value: ''
+            })
+        } else {
+            this.$scope.newCustomer.labels.push({
+                key: '',
+                value: ''
+            })
+        }
+    }
+
+    removeLabel(index, edit) {
+        let self = this;
+        let customer;
+
+        if (!edit) {
+            customer = self.$scope.newCustomer;
+        } else {
+            customer = self.$scope.editableFields;
+        }
+
+        customer.labels = _.difference(customer.labels, [customer.labels[index]])
+    }
+
+    removeManuallyLevel(customerId, fromList) {
+        let self = this;
+
+        self.CustomerService.removeManuallyLevel(customerId)
+            .then(
+                res => {
+                        let message = self.$filter('translate')('xhr.post_remove_customer_manually_level.success');
+                    self.Flash.create('success', message);
+                    if (fromList) {
+                        self.getData();
+                    } else {
+                        self.getCustomerData();
+                    }
+                },
+                    () => {
+                        let message = self.$filter('translate')('xhr.post_remove_customer_manually_level.error');
+                        self.Flash.create('danger', message);
+                    }
+                )
+    }
+
+    importCustomers(file) {
+        let self = this;
+
+        if (file) {
+            self.loaderStates.importCustomers = true;
+            self.CustomerService.postImportCustomers(file)
+                .then(
+                    res => {
+                if (res.totalProcessed == 0) {
+                let message = self.$filter('translate')('xhr.import.no_data');
+                self.Flash.create('warning', message);
+            } else if (res.totalFailed == 0 && res.totalProcessed > 0) {
+                let message = self.$filter('translate')('xhr.import.success', {processed: res.totalProcessed});
+                self.Flash.create('success', message);
+            } else {
+                let message = self.$filter('translate')('xhr.import.warning',
+                    {processed: res.totalProcessed, success: res.totalSuccess, failed: res.totalFailed}
+                );
+                self.Flash.create('warning', message);
+            }
+
+            self.$scope.importCustomerModal = false;
+            self.loaderStates.importCustomers = false;
+            self.tableParams.reload();
+        },
+            res => {
+                let message = self.$filter('translate')('xhr.import.error');
+                self.Flash.create('danger', message);
+                self.loaderStates.importCustomers = false;
+            }
+        );
+        }
+    }
 }
 CustomerController.$inject = ['$scope', '$state', '$stateParams', 'AuthService', 'CustomerService', 'Flash', 'EditableMap', 'NgTableParams', 'ParamsMap', '$q', 'LevelService', 'Validation', '$filter', 'DataService', 'PosService', 'TransferService', 'SellerService'];

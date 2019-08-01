@@ -1,71 +1,63 @@
-OpenLoyalty Documentation
-=========================
-Open Loyalty is technology for loyalty solutions.
-It's a loyalty platform in open source, with ready-to-use gamification and loyalty features, easy to setup and customize, ready to work on-line and off-line.
+Open Loyalty Documentation
+==========================
 
-Getting started
-===============
+.. image:: /_images/logo.png
+   :alt:   Open Loyalty Documentation
 
-Requirements
+`Open Loyalty`_ is technology for loyalty solutions for starting new loyalty projects
+based on the `Symfony Framework`_.
+
+.. note::
+
+    This documentation assumes you have a working knowledge of the Symfony
+    Framework. If you're not familiar with Symfony, please start with
+    reading the `Quick Tour`_ from the Symfony documentation.
+
+The User Guide
 ------------
-This project has full support for running in `Docker <https://www.docker.com/>`_.
 
-Best way to run it is to execute the following command
+:doc:`The Open Loyalty's User Guide </userguide/index>` is a complete documentation for users.
 
-  docker-compose up
-(docker must be installed on your machine).
+.. toctree::
+   :hidden:
 
-There is also an option to run this without docker, but in such case following a set of the tool will be needed:
+   userguide/index
 
-* php7
-* MySql or PosstgreSql
-* Elasticsearch 2.2
+Developer Documentation
+-----------------------
 
-Installation
+:doc:`The Developer's Guide </developer/index>` contains information for developers who want to know more about
+Open Loyalty architecture and used concepts. This guide helps to understand how Open Loyalty works.
+
+.. toctree::
+   :hidden:
+
+   developer/index
+
+The Cookbook
 ------------
-Simply clone this repository, run
 
-  composer install
+:doc:`The Open Loyalty's Cookbook </cookbook/index>` is a collection of solution articles helping you with some
+specific, narrow problems.
 
-and fill up all required parameters.
-Then use Phing to setup database, elastcsearch and load some demo data
+.. toctree::
+   :hidden:
 
+   cookbook/index
 
-  phing setup
+The REST API Reference
+----------------------
 
-(if you are using docker, remember to run those `command inside container <./run_command_inside_docker.rst>`_)
+:doc:`The API guide </api/index>` covers the REST API of Open Loyalty platform.
 
-Ports and URLS
---------------
-After starting Open Loyalty it's exposes services under followig URLs:
+.. toctree::
+   :hidden:
 
-* http://localhost:8182 - the administration panel,
-* http://localhost:8183 - the customer panel,
-* http://localhost:8184 - the merchant panel,
-* http://localhost:8181 - RESTful API port
+   api/index
 
+.. include:: /api/map.rst.inc
 
-
-
-Architecture
-============
-This project is based on CQRS, DDD and event sourcing, whole code is split into components and bundles. More info about each component and bundle can be found in `Architecture <./architecture/index.rst>`_.
-
-Customization
-=============
-There is some possibility to customize whole app for personal needs.
-Complete guide can be found in `customization <./customization.rst>`_ section of this documentation.
-
-
-Cron tasks
-==========
-There are two tasks that should be run periodically.
-
-1. Segmenting customers
-
-    bin/console oloy:segment:recreate
-
-2. Expiring points
-
-    ol:points:transfers:expire
-
+.. _OL: http://openloyalty.io
+.. _`Open Loyalty`: http://openloyalty.io
+.. _`Symfony Framework`: http://symfony.com
+.. _`Quick Tour`: http://symfony.com/doc/current/quick_tour

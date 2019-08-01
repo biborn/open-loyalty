@@ -1,5 +1,5 @@
 export default class EarningRuleController {
-    constructor($scope, $state, AuthService, EarningRuleService, SegmentService, LevelService, DataService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter) {
+    constructor($scope, $state, AuthService, EarningRuleService, SegmentService, LevelService, PosService, DataService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter) {
         if (!AuthService.isGranted('ROLE_ADMIN')) {
             AuthService.logout();
         }
@@ -7,9 +7,10 @@ export default class EarningRuleController {
         this.EarningRuleService = EarningRuleService;
         this.SegmentService = SegmentService;
         this.LevelService = LevelService;
+        this.PosService = PosService;
         this.$state = $state;
         this.Flash = Flash;
-        this.$scope.newEarningRule = {};
+        this.AuthService = AuthService;
         this.$scope.editableFields = {};
         this.earningRuleId = $stateParams.earningRuleId || null;
         this.NgTableParams = NgTableParams;
@@ -24,16 +25,26 @@ export default class EarningRuleController {
         this.Validation = Validation;
         this.$filter = $filter;
         this.$scope.egSkus = ['SKU123'];
+        this.$scope.fileValidate = this.EarningRuleService.storedFileError;
         this.config = DataService.getConfig();
         this.segments = null;
         this.levels = null;
+        this.pos = null;
+        this.$scope.newEarningRule = {};
         this.$scope.skusConfig = {
             delimiter: ';',
             persist: false,
             create: true,
             plugins: ['remove_button'],
         };
-
+        this.rewardCampaignConfig = {
+            valueField: 'id',
+            labelField: 'name',
+            create: false,
+            sortField: 'name',
+            searchField: ['name'],
+            maxItems: 1,
+        };
         this.target = [
             {
                 name: this.$filter('translate')('global.segment'),
@@ -59,6 +70,13 @@ export default class EarningRuleController {
             plugins: ['remove_button'],
             sortField: 'name'
         };
+        this.posConfig = {
+            valueField: 'posId',
+            labelField: 'name',
+            create: false,
+            plugins: ['remove_button'],
+            sortField: 'name'
+        };
         this.segmentsConfig = {
             valueField: 'segmentId',
             labelField: 'name',
@@ -74,6 +92,13 @@ export default class EarningRuleController {
             maxItems: 1
         };
         this.activeConfig = {
+            valueField: 'value',
+            labelField: 'name',
+            create: false,
+            sortField: 'name',
+            maxItems: 1,
+        };
+        this.labelsInclusionTypeConfig = {
             valueField: 'value',
             labelField: 'name',
             create: false,
@@ -118,6 +143,20 @@ export default class EarningRuleController {
                 value: 0
             }
         ];
+        this.labelsInclusionType = [
+            {
+                name: this.$filter('translate')('earning_rule.labels_inclusion_type_none'),
+                value: 'none_labels'
+            },
+            {
+                name: this.$filter('translate')('earning_rule.labels_inclusion_type_include'),
+                value: 'include_labels'
+            },
+            {
+                name: this.$filter('translate')('earning_rule.labels_inclusion_type_exclude'),
+                value: 'exclude_labels'
+            }
+        ];
         this.types = [
             {
                 name: this.$filter('translate')('earning_rule.types.points'),
@@ -140,8 +179,24 @@ export default class EarningRuleController {
                 value: "multiply_for_product"
             },
             {
+                name: this.$filter('translate')('earning_rule.types.multiply_by_product_labels'),
+                value: "multiply_by_product_labels"
+            },
+            {
                 name: this.$filter('translate')('earning_rule.types.referral'),
                 value: "referral"
+            },
+            {
+                name: this.$filter('translate')('earning_rule.types.instant_reward'),
+                value: "instant_reward"
+            },
+            {
+                name: this.$filter('translate')('earning_rule.types.geolocation'),
+                value: "geolocation"
+            },
+            {
+                name: this.$filter('translate')('earning_rule.types.qrcode'),
+                value: "qrcode"
             }
         ];
 
@@ -149,7 +204,7 @@ export default class EarningRuleController {
             earningRuleDetails: true,
             earningRuleList: true,
             coverLoader: true
-        }
+        };
 
         let segmentPromise = this.SegmentService.getActiveSegments({perPage: 1000})
             .then(
@@ -158,14 +213,30 @@ export default class EarningRuleController {
                 }
             );
 
-        let levelPromise = this.LevelService.getLevels()
+        let levelPromise = this.LevelService.getLevels({perPage: 1000})
             .then(
                 res => {
                     this.levels = res;
                 }
             );
 
-        this.dataPromise = this.$q.all([segmentPromise, levelPromise]);
+        let posPromise = this.PosService.getPosList({perPage: 1000})
+            .then(
+                res => {
+                    this.pos = res;
+                }
+            );
+
+        this.dataPromise = this.$q.all([segmentPromise, levelPromise, posPromise]);
+
+        let rewardCampaignsPromise = this.EarningRuleService.getActiveCampaigns()
+            .then(
+                res => {
+                    this.rewardCampaigns = res;
+                }
+            );
+
+        this.dataPromise = this.$q.all([segmentPromise, levelPromise, rewardCampaignsPromise]);
 
     }
 
@@ -206,6 +277,61 @@ export default class EarningRuleController {
         if ((type == 'event' || type == 'custom_event' || type == 'referral') && this.$scope.newEarningRule) {
             this.$scope.newEarningRule.eventName = null;
         }
+        if (type !== 'instant_reward')
+        {
+            this.$scope.newEarningRule.rewardCampaignId = null;
+            this.$scope.newEarningRule.lastExecutedRule = null;
+        }
+        if (type !== 'geolocation')
+        {
+            this.$scope.newEarningRule.latitude = null;
+            this.$scope.newEarningRule.longitude = null;
+            this.$scope.newEarningRule.radius = null;
+            this.$scope.newEarningRule.pointsAmount = null;
+        }
+        if (type !== 'points')
+        {
+            this.$scope.newEarningRule.pointValue = null;
+            this.$scope.newEarningRule.excludedSKUs = null;
+            this.$scope.newEarningRule.labelsInclusionType = null;
+            this.$scope.newEarningRule.excludedLabels = null;
+            this.$scope.newEarningRule.includedLabels = null;
+            this.$scope.newEarningRule.excludeDeliveryCost = null;
+            this.$scope.newEarningRule.minOrderValue = null;
+        }
+        if (type !== 'event')
+        {
+            this.$scope.newEarningRule.pointsAmount = null;
+            this.$scope.newEarningRule.eventName = null;
+        }
+        if (type !== 'custom_event')
+        {
+            this.$scope.newEarningRule.pointsAmount = null;
+            this.$scope.newEarningRule.limit = null;
+            this.$scope.newEarningRule.eventName = null;
+        }
+        if (type !== 'referral')
+        {
+               this.$scope.newEarningRule.eventName = null;
+               this.$scope.newEarningRule.rewardType = null;
+               this.$scope.newEarningRule.pointsAmount = null;
+        }
+        if (type !== 'product_purchase')
+        {
+            this.$scope.newEarningRule.skuIds = null;
+            this.$scope.newEarningRule.pointsAmount = null;
+        }
+        if (type !== 'multiply_for_product')
+        {
+            this.$scope.newEarningRule.skuIds = null;
+            this.$scope.newEarningRule.multiplier = null;
+            this.$scope.newEarningRule.labels = null;
+        }
+        if (type !== 'multiply_by_product_labels')
+        {
+            this.$scope.newEarningRule.labelMultipliers = null;
+        }
+
     }
 
     getEarningRuleData() {
@@ -223,17 +349,17 @@ export default class EarningRuleController {
     _getEarningRule() {
         let self = this;
         self.loaderStates.earningRuleDetails = true;
-
         if (self.earningRuleId) {
             self.EarningRuleService.getEarningRule(self.earningRuleId)
                 .then(
                     res => {
                         self.$scope.earningRule = res;
                         self.$scope.editableFields = self.EditableMap.humanizeCampaign(res);
+
                         if (self.$scope.editableFields.levels && self.$scope.editableFields.levels.length) {
                             let levels = self.$scope.editableFields.levels;
                             for (let i in levels) {
-                                let level = _.find(self.levels, {id: levels[i]});
+                                let  level = _.find(self.levels, {id: levels[i]});
                             }
 
                         }
@@ -241,6 +367,13 @@ export default class EarningRuleController {
                             let segments = self.$scope.editableFields.segments;
                             for (let i in segments) {
                                 let segment = _.find(self.segments, {id: segments[i]});
+                            }
+
+                        }
+                        if (self.$scope.editableFields.pos && self.$scope.editableFields.pos.length) {
+                            let poses = self.$scope.editableFields.pos;
+                            for (let i in poses) {
+                                let pos = _.find(self.pos, {id: poses[i]});
                             }
 
                         }
@@ -252,7 +385,20 @@ export default class EarningRuleController {
                         self.Flash.create('danger', message);
                         self.loaderStates.earningRuleDetails = false;
                     }
-                )
+                );
+
+            self.EarningRuleService.getEarningRuleImage(self.earningRuleId)
+                .then(
+                    res => {
+                    self.$scope.earningRuleImagePath = true;
+                }
+            )
+            .catch(
+                err => {
+                    self.$scope.earningRuleImagePath = false;
+                }
+            );
+
         } else {
             self.$state.go('admin.earning-rule-list');
             let message = self.$filter('translate')('xhr.get_earning_rule.no_id');
@@ -263,20 +409,49 @@ export default class EarningRuleController {
 
     editEarningRule(editedEarningRule) {
         let self = this;
-        self.loaderStates.earningRuleDetails = true;
+
         self.EarningRuleService.putEarningRule(self.earningRuleId, self.EditableMap.newEarningRule(editedEarningRule, true))
             .then(
-                res => {
-                    let message = self.$filter('translate')('xhr.put_earning_rule.success');
-                    self.Flash.create('success', message);
-                    self.$state.go('admin.earning-rule-list');
-                    self.loaderStates.earningRuleDetails = false;
-                },
-                res => {
-                    self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
+                success => {
+                    if (self.$scope.earningRulePhoto) {
+                        self.$scope.fileValidate = {};
+
+                        self.EarningRuleService.postEarningRuleImage(self.earningRuleId, self.$scope.earningRulePhoto)
+                            .then(
+                                success => {
+                                    self.EarningRuleService.storedFileError = {};
+                                    let message = self.$filter('translate')('xhr.put_earning_rule.success');
+                                    self.Flash.create('success', message);
+                                    self.loaderStates.coverLoader = false;
+                                    self.$state.go('admin.earning-rule-list');
+                                }
+                            )
+                            .catch(
+                                err => {
+                                    if (err.data) {
+                                        self.$scope.fileValidate = self.Validation.mapSymfonyValidation(err.data);
+                                    }
+
+                                    let message = self.$filter('translate')('xhr.put_earning_rule.error');
+                                    self.Flash.create('danger', message);
+                                    self.loaderStates.coverLoader = false;
+                                    self.$state.go('admin.edit-earning-rule', {earningRuleId: self.earningRuleId});
+                                }
+                        );
+
+                    } else {
+                        let message = self.$filter('translate')('xhr.put_earning_rule.success');
+                        self.Flash.create('success', message);
+                        self.$state.go('admin.earning-rule-list');
+                    }
+                }
+            ).catch(
+                err => {
+                    self.$scope.validate = self.Validation.mapSymfonyValidation(err.data);
                     let message = self.$filter('translate')('xhr.put_earning_rule.error');
                     self.Flash.create('danger', message);
                     self.loaderStates.earningRuleDetails = false;
+                    self.$state.go('admin.edit-earning-rule', {earningRuleId: self.earningRuleId});
                 }
             )
     }
@@ -287,10 +462,38 @@ export default class EarningRuleController {
         self.EarningRuleService.postEarningRule(self.EditableMap.newEarningRule(newEarningRule))
             .then(
                 res => {
-                    let message = self.$filter('translate')('xhr.post_earning_rule.success');
-                    self.Flash.create('success', message);
-                    self.loaderStates.earningRuleDetails = false;
-                    self.$state.go('admin.earning-rule-list')
+                    if (self.$scope.earningRulePhoto) {
+                        self.$scope.fileValidate = {};
+
+                        self.EarningRuleService.postEarningRuleImage(res.earningRuleId, self.$scope.earningRulePhoto)
+                            .then(
+                                success => {
+                                    self.EarningRuleService.storedFileError = {};
+                                    let message = self.$filter('translate')('xhr.post_earning_rule.success');
+                                    self.Flash.create('success', message);
+                                    self.loaderStates.coverLoader = false;
+                                    self.$state.go('admin.earning-rule-list');
+                                }
+                            )
+                            .catch(
+                                err => {
+                                    if (err.data) {
+                                        self.$scope.fileValidate = self.Validation.mapSymfonyValidation(err.data);
+                                    }
+
+                                    let message = self.$filter('translate')('xhr.post_earning_rule.warning');
+                                    self.Flash.create('danger', message);
+                                    self.loaderStates.coverLoader = false;
+                                    self.$state.go('admin.edit-earning-rule', {earningRuleId: res.earningRuleId});
+                                }
+                            );
+
+                    } else {
+                        let message = self.$filter('translate')('xhr.post_earning_rule.success');
+                        self.Flash.create('success', message);
+                        self.loaderStates.earningRuleDetails = false;
+                        self.$state.go('admin.earning-rule-list')
+                    }
                 },
                 res => {
                     self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
@@ -327,6 +530,42 @@ export default class EarningRuleController {
         }
     }
 
+    addIncludedLabel(edit) {
+        if (edit) {
+            if (!(this.$scope.editableFields.includedLabels instanceof Array)) {
+                this.$scope.editableFields.includedLabels = [];
+            }
+            this.$scope.editableFields.includedLabels.push({
+                key: '',
+                value: ''
+            })
+        } else {
+            this.$scope.newEarningRule.includedLabels.push({
+                key: '',
+                value: ''
+            })
+        }
+    }
+
+    addLabelMultiplier(edit) {
+        if (edit) {
+            if (!(this.$scope.editableFields.labelMultipliers instanceof Array)) {
+                this.$scope.editableFields.labelMultipliers = [];
+            }
+            this.$scope.editableFields.labelMultipliers.push({
+                key: '',
+                value: '',
+                multiplier: ''
+            })
+        } else {
+            this.$scope.newEarningRule.labelMultipliers.push({
+                key: '',
+                value: '',
+                multiplier: ''
+            })
+        }
+    }
+
     removeExcludedSKU(index, edit) {
         let self = this;
         let earningRule;
@@ -353,6 +592,33 @@ export default class EarningRuleController {
         earningRule.excludedLabels = _.difference(earningRule.excludedLabels, [earningRule.excludedLabels[index]])
     }
 
+    removeIncludedLabel(index, edit) {
+        let self = this;
+        let earningRule;
+
+        if (!edit) {
+            earningRule = self.$scope.newEarningRule;
+        } else {
+            earningRule = self.$scope.editableFields;
+        }
+
+        earningRule.includedLabels = _.difference(earningRule.includedLabels, [earningRule.includedLabels[index]])
+    }
+
+
+    removeLabelMultiplier(index, edit) {
+        let self = this;
+        let earningRule;
+
+        if (!edit) {
+            earningRule = self.$scope.newEarningRule;
+        } else {
+            earningRule = self.$scope.editableFields;
+        }
+
+        earningRule.labelMultipliers = _.difference(earningRule.labelMultipliers, [earningRule.labelMultipliers[index]])
+    }
+
     setRuleState(state, ruleId) {
         let self = this;
 
@@ -370,6 +636,45 @@ export default class EarningRuleController {
             )
 
     }
+
+    /**
+     * Generating photo route
+     *
+     * @method generatePhotoRoute
+     * @returns {string}
+     */
+    generatePhotoRoute() {
+        return this.DataService.getConfig().apiUrl + '/earningRule/' + this.earningRuleId + '/photo'
+    }
+
+    /**
+     * Deletes photo
+     *
+     * @method deletePhoto
+     */
+    deletePhoto() {
+        let self = this;
+
+        this.EarningRuleService.deleteEarningRuleImage(this.earningRuleId)
+            .then(
+                res => {
+                    self.$scope.earningRuleImagePath = false;
+                        let message = self.$filter('translate')('xhr.delete_earning_rule_image.success');
+                        self.Flash.create('success', message);
+                }
+            )
+            .catch(
+                err => {
+                    self.$scope.validate = self.Validation.mapSymfonyValidation(res.data);
+                    let message = self.$filter('translate')('xhr.delete_earning_rule_image.error');
+                    self.Flash.create('danger', message);
+                }
+            )
+    }
+
+    isStoppable(type){
+        return this.DataService.isStoppableEarningRule(type);
+    }
 }
 
-EarningRuleController.$inject = ['$scope', '$state', 'AuthService', 'EarningRuleService', 'SegmentService', 'LevelService', 'DataService', 'Flash', 'NgTableParams', '$q', 'ParamsMap', '$stateParams', 'EditableMap', 'Validation', '$filter'];
+EarningRuleController.$inject = ['$scope', '$state', 'AuthService', 'EarningRuleService', 'SegmentService', 'LevelService', 'PosService', 'DataService', 'Flash', 'NgTableParams', '$q', 'ParamsMap', '$stateParams', 'EditableMap', 'Validation', '$filter'];

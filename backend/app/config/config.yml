@@ -14,7 +14,7 @@ parameters:
 
 framework:
     #esi:             ~
-    translator:      { fallbacks: ["%locale%"] }
+    translator:      { fallbacks: ['%locale%'] }
     secret:          "%secret%"
     router:
         resource: "%kernel.root_dir%/config/routing.yml"
@@ -116,6 +116,7 @@ nelmio_cors:
           allow_headers: ['*']
           allow_methods: ['POST', 'PUT', 'GET', 'DELETE']
           max_age: 3600
+          forced_allow_origin_value: '*'
 
 gesdinet_jwt_refresh_token:
     ttl_update: true
@@ -130,3 +131,12 @@ monolog:
             # log *all* messages (debug is lowest level)
             level: debug
             channels: [plugins]
+
+knp_doctrine_behaviors:
+    translatable: true
+
+a2lix_translation_form:
+    locale_provider: OpenLoyalty\Bundle\TranslationBundle\Provider\A2lixLocaleProvider
+
+doctrine_migrations:
+    namespace: OpenLoyalty\Migrations

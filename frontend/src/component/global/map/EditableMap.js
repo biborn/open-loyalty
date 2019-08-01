@@ -1,10 +1,13 @@
 import moment from 'moment';
 
 export default class EditableMap {
+
     constructor($filter, DataService) {
         this.config = window.OpenLoyaltyConfig;
         this.$filter = $filter;
         this.DataService = DataService;
+
+        this.availableTranslations = this.DataService.getAvailableFrontendTranslations();
     }
 
     customer(data, ignoreSellerId) {
@@ -16,6 +19,11 @@ export default class EditableMap {
 
         if (!data.address) {
             data.address = {}
+        }
+
+        let birthDate = moment(data.birthDate).format(self.config.dateFormat);
+        if (birthDate === 'Invalid date') {
+            birthDate = '';
         }
 
         if (data.plainPassword) {
@@ -33,7 +41,7 @@ export default class EditableMap {
                     name: data.company.name,
                     nip: data.company.nip
                 },
-                birthDate: moment(data.birthDate).format(self.config.dateFormat),
+                birthDate: birthDate,
                 email: data.email,
                 firstName: data.firstName,
                 gender: data.gender,
@@ -60,10 +68,11 @@ export default class EditableMap {
                     name: data.company.name,
                     nip: data.company.nip
                 },
-                birthDate: moment(data.birthDate).format(self.config.dateFormat),
+                birthDate: birthDate,
                 email: data.email,
                 firstName: data.firstName,
                 gender: data.gender,
+                labels: data.labels,
                 lastName: data.lastName,
                 phone: data.phone,
                 posId: data.posId,
@@ -73,7 +82,7 @@ export default class EditableMap {
                 agreement2: data.agreement2,
                 agreement3: data.agreement3
             };
-
+            res.labels = this.convertLabels(res);
             if (!ignoreSellerId) {
                 res.sellerId = data.sellerId;
 
@@ -94,6 +103,9 @@ export default class EditableMap {
         let self = this;
         if (data.birthDate) {
             data.birthDate = moment(data.birthDate).format(self.config.dateFormat);
+            if (data.birthDate === 'Invalid date') {
+                data.birthDate = '';
+            }
         }
         if (data.address) {
             data.address = _.pickBy(data.address);
@@ -103,7 +115,12 @@ export default class EditableMap {
     }
 
     humanizeUser(data) {
-        return data;
+        let res = _.clone(data);
+        let roles = res.roles;
+        let dataArray = Object.keys(roles).map(val => roles[val].id);
+        res.roles = dataArray;
+
+        return _.pickBy(res);
     }
 
     level(data) {
@@ -125,8 +142,6 @@ export default class EditableMap {
 
         return {
             conditionValue: self.$filter('commaToDot')(data.conditionValue),
-            description: data.description,
-            name: data.name,
             minOrder: data.minOrder,
             active: data.active,
             reward: {
@@ -134,12 +149,18 @@ export default class EditableMap {
                 value: self.$filter('commaToDot')(data.reward.value),
                 code: data.reward.code
             },
-            specialRewards: specialRewards
+            specialRewards: specialRewards,
+            translations: data.translations
         }
     }
 
+
     humanizeLevel(data) {
         let self = this;
+
+        if (data.translations) {
+            data.translations = self.convertTranslations(data.translations);
+        }
 
         if (data.reward) {
             data.reward.value = self.$filter('percent')(self.$filter('commaToDot')(data.reward.value));
@@ -161,15 +182,26 @@ export default class EditableMap {
         return data;
     }
 
+    newCustomer(data) {
+        let res = _.clone(data);
+        res.labels = this.convertLabels(res);
+
+        return _.pickBy(res);
+    }
+
     newEarningRule(data, deleteType) {
         let res = _.clone(data);
+
         delete res.usageUrl;
+        delete res.hasPhoto;
+
         switch (res.type) {
             case 'points' :
                 delete res.eventName;
                 delete res.skuIds;
                 delete res.pointsAmount;
                 delete res.multiplier;
+                delete res.labelMultipliers;
                 delete res.limit;
                 delete res.rewardType;
                 break;
@@ -177,6 +209,9 @@ export default class EditableMap {
                 delete res.excludedSKUs;
                 delete res.pointValue;
                 delete res.excludedLabels;
+                delete res.includedLabels;
+                delete res.labelsInclusionType;
+                delete res.labelMultipliers;
                 delete res.excludeDeliveryCost;
                 delete res.minOrderValue;
                 delete res.skuIds;
@@ -188,6 +223,9 @@ export default class EditableMap {
                 delete res.excludedSKUs;
                 delete res.pointValue;
                 delete res.excludedLabels;
+                delete res.includedLabels;
+                delete res.labelsInclusionType;
+                delete res.labelMultipliers;
                 delete res.excludeDeliveryCost;
                 delete res.minOrderValue;
                 delete res.skuIds;
@@ -202,6 +240,9 @@ export default class EditableMap {
                 delete res.excludedSKUs;
                 delete res.pointValue;
                 delete res.excludedLabels;
+                delete res.includedLabels;
+                delete res.labelsInclusionType;
+                delete res.labelMultipliers;
                 delete res.excludeDeliveryCost;
                 delete res.minOrderValue;
                 delete res.skuIds;
@@ -213,6 +254,9 @@ export default class EditableMap {
                 delete res.excludedSKUs;
                 delete res.pointValue;
                 delete res.excludedLabels;
+                delete res.includedLabels;
+                delete res.labelsInclusionType;
+                delete res.labelMultipliers;
                 delete res.excludeDeliveryCost;
                 delete res.minOrderValue;
                 delete res.eventName;
@@ -224,6 +268,9 @@ export default class EditableMap {
                 delete res.excludedSKUs;
                 delete res.pointValue;
                 delete res.excludedLabels;
+                delete res.includedLabels;
+                delete res.labelsInclusionType;
+                delete res.labelMultipliers;
                 delete res.excludeDeliveryCost;
                 delete res.minOrderValue;
                 delete res.eventName;
@@ -231,8 +278,34 @@ export default class EditableMap {
                 delete res.limit;
                 delete res.rewardType;
                 break;
+            case 'multiply_by_product_labels' :
+                delete res.excludedSKUs;
+                delete res.pointValue;
+                delete res.excludedLabels;
+                delete res.includedLabels;
+                delete res.labelsInclusionType;
+                delete res.excludeDeliveryCost;
+                delete res.minOrderValue;
+                delete res.eventName;
+                delete res.pointsAmount;
+                delete res.limit;
+                delete res.rewardType;
+                break;
+            case 'instant_reward':
+                delete res.eventName;
+                delete res.skuIds;
+                delete res.pointsAmount;
+                delete res.multiplier;
+                delete res.labelMultipliers;
+                delete res.limit;
+                delete res.rewardType;
+                break;
             default:
                 break;
+        }
+
+        if (!res.rewardCampaignId){
+            delete res.rewardCampaignId;
         }
 
         if (res.allTimeActive) {
@@ -263,26 +336,12 @@ export default class EditableMap {
             res.excludedSKUs = SKUs;
         }
 
-        if (res.excludedLabels) {
-            let labels = '';
-            for (let label in res.excludedLabels) {
-                labels += res.excludedLabels[label].key + ':' + res.excludedLabels[label].value + ';';
-            }
-            if (labels.charAt(labels.length - 1) == ';') {
-                labels = labels.substring(0, labels.length - 1)
-            }
-            res.excludedLabels = labels;
+        if (!this.DataService.isStoppableEarningRule(res.type)){
+            delete res.lastExecutedRule;
         }
-        if (res.labels) {
-            let labels = '';
-            for (let label in res.labels) {
-                labels += res.labels[label].key + ':' + res.labels[label].value + ';';
-            }
-            if (labels.charAt(labels.length - 1) == ';') {
-                labels = labels.substring(0, labels.length - 1)
-            }
-            res.labels = labels;
-        }
+        res.excludedLabels = this.convertLabels(res, 'excludedLabels');
+        res.includedLabels = this.convertLabels(res, 'includedLabels');
+        res.labels = this.convertLabels(res);
 
         delete res.earningRuleId;
         delete res.fromServer;
@@ -291,8 +350,15 @@ export default class EditableMap {
         delete res.usages;
         delete res.levelNames;
         delete res.segmentNames;
+        delete res.posNames;
         if (deleteType) {
             delete res.type;
+        }
+
+        if (data.type === "geolocation")
+        {
+            res.latitude = data.latitude ? data.latitude.toString() : null;
+            res.longitude = data.longitude ? data.longitude.toString() : null;
         }
 
         return _.pickBy(res);
@@ -307,8 +373,12 @@ export default class EditableMap {
     humanizeEarningRuleFields(data) {
         let self = this;
 
+        if (data.translations) {
+            data.translations = self.convertTranslations(data.translations);
+        }
+
         if (data.startAt) {
-            data.startAt = moment(data.startAt).format(self.config.dateTimeFormat)
+            data.startAt = moment(data.startAt).format(self.config.dateTimeForhumanizeEarningRuleFieldsmat)
         }
         if (data.endAt) {
             data.endAt = moment(data.endAt).format(self.config.dateTimeFormat)
@@ -322,12 +392,17 @@ export default class EditableMap {
             data.target = 'segment'
         }
 
+        if (data.levels && data.segments && !data.levels.length && !data.segments.length) {
+            data.target = 'level';
+        }
+
         data.excludedLabels = _.pickBy(data.excludedLabels);
         if (data.excludedSKUs) {
             data.excludedSKUs = data.excludedSKUs.filter(function (e) {
                 return e
             });
         }
+        data.includedLabels = _.pickBy(data.includedLabels);
 
         return data;
     }
@@ -359,6 +434,20 @@ export default class EditableMap {
         return _.pickBy(pos)
     }
 
+
+    role(data) {
+        let res = _.clone(data);
+        delete res.role;
+        delete res.id;
+
+        _.each(res.permissions, role => {
+            delete role.id;  
+        });
+
+        return _.pickBy(res);
+    }
+
+
     segment(data) {
         let self = this;
         let segment = angular.copy(data);
@@ -369,9 +458,11 @@ export default class EditableMap {
                 delete criterium.criterionId;
                 if (criterium.posIds) {
                     let ids = [];
+
                     _.each(criterium.posIds, pos => {
                         ids.push(pos.posId);
                     });
+
                     criterium.posIds = ids;
                 }
                 if (criterium.fromDate && criterium.toDate) {
@@ -394,6 +485,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'transaction_count' :
                         delete criterium.posIds;
@@ -408,6 +501,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'purchase_period' :
                         delete criterium.min;
@@ -422,6 +517,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'bought_labels' :
                         delete criterium.min;
@@ -437,6 +534,42 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
+                        break;
+                    case 'customer_with_labels_values' :
+                        delete criterium.min;
+                        delete criterium.posIds;
+                        delete criterium.fromDate;
+                        delete criterium.toDate;
+                        delete criterium.max;
+                        delete criterium.makers;
+                        delete criterium.anniversaryType;
+                        delete criterium.days;
+                        delete criterium.skuIds;
+                        delete criterium.fromAmount;
+                        delete criterium.toAmount;
+                        delete criterium.percent;
+                        delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
+                        break;
+                    case 'customer_has_labels' :
+                        delete criterium.min;
+                        delete criterium.posIds;
+                        delete criterium.fromDate;
+                        delete criterium.toDate;
+                        delete criterium.max;
+                        delete criterium.makers;
+                        delete criterium.anniversaryType;
+                        delete criterium.days;
+                        delete criterium.skuIds;
+                        delete criterium.fromAmount;
+                        delete criterium.toAmount;
+                        delete criterium.percent;
+                        delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'bought_makers' :
                         delete criterium.min;
@@ -452,6 +585,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'anniversary' :
                         delete criterium.min;
@@ -466,6 +601,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'last_purchase_n_days_before' :
                         delete criterium.min;
@@ -481,6 +618,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'bought_skus' :
                         delete criterium.min;
@@ -496,6 +635,8 @@ export default class EditableMap {
                         delete criterium.toAmount;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'transaction_amount' :
                         delete criterium.min;
@@ -510,6 +651,8 @@ export default class EditableMap {
                         delete criterium.max;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'average_transaction_amount' :
                         delete criterium.min;
@@ -524,6 +667,8 @@ export default class EditableMap {
                         delete criterium.max;
                         delete criterium.percent;
                         delete criterium.posId;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
                         break;
                     case 'transaction_percent_in_pos' :
                         delete criterium.min;
@@ -538,6 +683,25 @@ export default class EditableMap {
                         delete criterium.max;
                         delete criterium.fromAmount;
                         delete criterium.toAmount;
+                        delete criterium.customers;
+                        delete criterium.segmentedCustomers;
+                        break;
+                    case 'customer_list' :
+                        delete criterium.min;
+                        delete criterium.posIds;
+                        delete criterium.fromDate;
+                        delete criterium.toDate;
+                        delete criterium.labels;
+                        delete criterium.makers;
+                        delete criterium.anniversaryType;
+                        delete criterium.days;
+                        delete criterium.skuIds;
+                        delete criterium.max;
+                        delete criterium.fromAmount;
+                        delete criterium.toAmount;
+                        delete criterium.percent;
+                        delete criterium.posId;
+                        delete criterium.segmentedCustomers;
                         break;
                     default:
                         break;
@@ -575,12 +739,12 @@ export default class EditableMap {
         let self = this;
         let seller = angular.copy(data);
 
-        let posArr = {};
         delete seller.deleted;
         delete seller.sellerId;
         delete seller.posCity;
         delete seller.posName;
         delete seller.name;
+        delete seller.version;
 
         return seller;
     }
@@ -595,6 +759,9 @@ export default class EditableMap {
         let self = this;
         let campaign = angular.copy(data);
 
+        if (campaign.translations) {
+            campaign.translations = self.convertTranslations(campaign.translations);
+        }
 
         if (campaign.campaignActivity) {
             campaign.campaignActivity.activeTo = moment(campaign.campaignActivity.activeTo).format(self.config.dateTimeFormat);
@@ -619,7 +786,9 @@ export default class EditableMap {
 
     campaign(data) {
         let self = this;
-        let campaign = angular.copy(data);
+        let campaign = _.omit(angular.copy(data), ['name', 'shortDescription', 'usageInstruction', 'conditionsDescription', 'brandDescription', 'brandName']);
+
+        campaign.labels = this.convertLabels(campaign);
 
         if (campaign.campaignActivity) {
             if (campaign.campaignActivity.activeTo) {
@@ -654,6 +823,47 @@ export default class EditableMap {
         if (campaign.will_be_active_to) {
             delete campaign.will_be_active_to;
         }
+        if (campaign.reward == 'cashback') {
+            delete campaign.costInPoints;
+            delete campaign.campaignVisibility;
+            delete campaign.limit;
+            delete campaign.limitPerUser;
+            delete campaign.coupons;
+            delete campaign.singleCoupon;
+            delete campaign.unlimited;
+            delete campaign.daysInactive;
+            delete campaign.daysValid;
+        }
+
+        if (campaign.reward == 'custom_campaign_code') {
+            delete campaign.costInPoints;
+            delete campaign.limit;
+            delete campaign.limitPerUser;
+            delete campaign.coupons;
+            delete campaign.singleCoupon;
+            delete campaign.unlimited;
+            delete campaign.daysInactive;
+            delete campaign.daysValid;
+            if (campaign.connectType == 'none') {
+                delete campaign.earningRuleId;
+            }
+        } else {
+            delete campaign.connectType;
+            delete campaign.earningRuleId;
+        }
+
+        if (campaign.reward == 'percentage_discount_code') {
+            delete campaign.costInPoints;
+            delete campaign.campaignVisibility;
+            delete campaign.limit;
+            delete campaign.limitPerUser;
+            delete campaign.coupons;
+            delete campaign.singleCoupon;
+            delete campaign.unlimited;
+        } else {
+            delete campaign.transactionPercentageValue;
+        }
+
         delete campaign.couponsCsv;
         delete campaign.id;
         delete campaign.segmentNames;
@@ -662,8 +872,63 @@ export default class EditableMap {
         delete campaign.usageLeftForCustomer;
         delete campaign.usersWhoUsedThisCampaignCount;
         delete campaign.visibleForCustomersCount;
+        delete campaign.hasPhoto;
+        delete campaign.categoryNames;
+        delete campaign.brandIcon;
+        delete campaign.earningRule;
 
         return campaign;
+    }
+
+    convertLabels(object, key = 'labels') {
+        let labels = '';
+
+        if (object[key]) {
+            for (let label in object[key]) {
+                labels += object[key][label].key + ':' + object[key][label].value + ';';
+            }
+            if (labels.charAt(labels.length - 1) == ';') {
+                labels = labels.substring(0, labels.length - 1)
+            }
+        }
+
+        return labels;
+    }
+
+    convertTranslations(translations) {
+        const newTranslations = {};
+
+        _.each(translations, translation => {
+            if (!this.availableTranslations.some(t => t.code === translation.locale)) {
+                return;
+            }
+            newTranslations[translation.locale] = {};
+            _.each(translation, (value, key) => {
+                if (key !== 'locale' && key !== 'id') {
+                    newTranslations[translation.locale][key] = value;
+                }
+            });
+        });
+
+        return newTranslations;
+    }
+
+    humanizeCampaignCategory(data) {
+        let self = this;
+        let category = angular.copy(data);
+
+        if (category.translations) {
+            category.translations = self.convertTranslations(category.translations);
+        }
+
+        return category;
+    }
+
+    campaignCategory(data) {
+        let category = _.omit(angular.copy(data), ['name']);
+
+        delete category.campaignCategoryId;
+        return category;
     }
 }
 

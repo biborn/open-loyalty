@@ -66,6 +66,26 @@ angular.module(MODULE_NAME, [])
                     }
                 }
             })
+            .state('customer.panel.registration_activate_sms', {
+                url: "/customer/registration-activate",
+                views: {
+                    'extendTop@': {
+                        templateUrl: 'templates/customer-registration-activate-sms-extend-top.html',
+                        controller: 'CustomerRegistrationController',
+                        controllerAs: 'CustomerRegistrationCtrl'
+                    },
+                    'main@': {
+                        templateUrl: require('./templates/customer-registration-activate-sms.html'),
+                        controller: 'CustomerRegistrationController',
+                        controllerAs: 'CustomerRegistrationCtrl'
+                    },
+                    'extendBottom@': {
+                        templateUrl: 'templates/customer-registration-activate-sms-extend-bottom.html',
+                        controller: 'CustomerRegistrationController',
+                        controllerAs: 'CustomerRegistrationCtrl'
+                    }
+                }
+            })
             .state('customer.panel.registration_confirm', {
                 url: "/customer/registration/activate/:token",
                 views: {
@@ -126,6 +146,26 @@ angular.module(MODULE_NAME, [])
                     }
                 }
             })
+            .state('forgot-password-reset-sms-customer', {
+                url: "/password/reset",
+                views: {
+                    'extendTop@': {
+                        templateUrl: 'templates/customer-password-reset-extend-top.html',
+                        controller: 'SecurityController',
+                        controllerAs: 'SecurityCtrl'
+                    },
+                    'main@': {
+                        templateUrl: require('./templates/customer-password-reset-sms.html'),
+                        controller: 'SecurityController',
+                        controllerAs: 'SecurityCtrl'
+                    },
+                    'extendBottom@': {
+                        templateUrl: 'templates/customer-password-reset-extend-bottom.html',
+                        controller: 'SecurityController',
+                        controllerAs: 'SecurityCtrl'
+                    }
+                }
+            })
     })
     .run(($templateCache, $http) => {
         let catchErrorTemplate = () => {
@@ -139,7 +179,9 @@ angular.module(MODULE_NAME, [])
         $templateCache.put('templates/customer-registration-success-extend-bottom.html', '');
 
         $templateCache.put('templates/customer-registration-activate-extend-top.html', '');
+        $templateCache.put('templates/customer-registration-activate-sms-extend-top.html', '');
         $templateCache.put('templates/customer-registration-activate-extend-bottom.html', '');
+        $templateCache.put('templates/customer-registration-activate-sms-extend-bottom.html', '');
 
         $templateCache.put('templates/customer-password-request-extend-top.html', '');
         $templateCache.put('templates/customer-password-request-extend-bottom.html', '');
@@ -167,6 +209,13 @@ angular.module(MODULE_NAME, [])
             .then(
                 response => {
                     $templateCache.put('templates/customer-registration-activate.html', response.data);
+                }
+            )
+            .catch(catchErrorTemplate);
+        $http.get(`templates/customer-registration-activate-sms.html`)
+            .then(
+                response => {
+                    $templateCache.put('templates/customer-registration-activate-sms.html', response.data);
                 }
             )
             .catch(catchErrorTemplate);

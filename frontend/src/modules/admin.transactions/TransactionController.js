@@ -7,6 +7,7 @@ export default class TransactionController {
             AuthService.logout();
         }
         this.TransactionService = TransactionService;
+        this.AuthService = AuthService;
         this.CustomerService = CustomerService;
         this.Validation = Validation;
         this.ParamsMap = ParamsMap;
@@ -48,13 +49,19 @@ export default class TransactionController {
                     .then(
                         res => {
                             self.$scope.transactions = res;
+                            self.$scope.editLabels = {};
+                            for (let i = 0; i < self.$scope.transactions.length; ++i) {
+                                self.$scope.editLabels[self.$scope.transactions[i].transactionId] = {
+                                    labels: self.$scope.transactions[i].labels
+                                };
+                            }
                             params.total(res.total);
                             self.loaderStates.transactionList = false;
                             self.loaderStates.coverLoader = false;
                             dfd.resolve(res);
                         },
                         () => {
-                            let message = self.$filter('translate')('xhr.get_transations.error');
+                            let message = self.$filter('translate')('xhr.get_translations.error');
                             self.Flash.create('danger', message);
                             self.loaderStates.transferList = false;
                             self.loaderStates.coverLoader = false;
@@ -65,6 +72,39 @@ export default class TransactionController {
                 return dfd.promise;
             }
         });
+    }
+
+    addLabel(transactionId) {
+        if (!(this.$scope.editLabels[transactionId].labels instanceof Array)) {
+            this.$scope.editLabels[transactionId].labels = [];
+        }
+        this.$scope.editLabels[transactionId].labels.push({
+            key: '',
+            value: ''
+        })
+    }
+
+    removeLabel(transactionId, index) {
+        this.$scope.editLabels[transactionId].labels = _.difference(this.$scope.editLabels[transactionId].labels, [this.$scope.editLabels[transactionId].labels[index]]);
+    }
+
+    editLabels(transactionId, $index) {
+        let self = this;
+        self.TransactionService.postLabels(transactionId, self.$scope.editLabels[transactionId])
+            .then(
+                () => {
+                    let message = self.$filter('translate')('xhr.post_transaction_labels.success');
+                    self.Flash.create('success', message);
+                    self.$scope.transactions[$index].showEditLabelsModal = false;
+                    self.$scope.editLabelsValidate = [];
+                    self.tableParams.reload();
+                },
+                res => {
+                    let message = self.$filter('translate')('xhr.post_transaction_labels.error');
+                    self.Flash.create('danger', message);
+                    self.$scope.editLabelsValidate = self.Validation.mapSymfonyValidation(res.data);
+                }
+            );
     }
 
     linkTransaction(linked) {
@@ -78,13 +118,48 @@ export default class TransactionController {
                         let message = self.$filter('translate')('xhr.post_transaction_assign.success');
                         self.Flash.create('success', message);
                         self.$scope.linkTransactionModal = false;
-                        self.loaderStates.addTransaction = false; 
+                        self.loaderStates.addTransaction = false;
+                        self.tableParams.reload();
                     },
                     res => {
                         let message = self.$filter('translate')('xhr.post_transaction_assign.error');
                         self.Flash.create('danger', message);
                         self.$scope.linkedValidate = self.Validation.mapSymfonyValidation(res.data);
                         self.loaderStates.addTransaction = false; 
+                    }
+                );
+        }
+    }
+
+    importTransaction(file) {
+        let self = this;
+
+        if (file) {
+            self.loaderStates.importTransaction = true;
+            self.TransactionService.postImportTransaction(file)
+                .then(
+                    res => {
+                        if (res.totalProcessed == 0) {
+                            let message = self.$filter('translate')('xhr.import.no_data');
+                            self.Flash.create('warning', message);
+                        } else if (res.totalFailed == 0 && res.totalProcessed > 0) {
+                            let message = self.$filter('translate')('xhr.import.success', {processed: res.totalProcessed});
+                            self.Flash.create('success', message);
+                        } else {
+                            let message = self.$filter('translate')('xhr.import.warning',
+                                {processed: res.totalProcessed, success: res.totalSuccess, failed: res.totalFailed}
+                            );
+                            self.Flash.create('warning', message);
+                        }
+
+                        self.$scope.importTransactionModal = false;
+                        self.loaderStates.importTransaction = false;
+                        self.tableParams.reload();
+                },
+                    res => {
+                        let message = self.$filter('translate')('xhr.import.error');
+                        self.Flash.create('danger', message);
+                        self.loaderStates.importTransaction = false;
                     }
                 );
         }
@@ -128,12 +203,19 @@ export default class TransactionController {
 
         this.customersConfig = {
             valueField: 'customerId',
-            labelField: 'email',
+            render: {
+                option: (item, escape) => {
+                    return '<div>'+(item.email ? escape(item.email) : '')+' ('+escape(item.phone)+')</div>';
+                },
+                item: (item, escape) => {
+                    return '<div>'+(item.email ? escape(item.email) : '')+' ('+escape(item.phone)+')</div>';
+                }
+            },
             create: false,
             sortField: 'email',
             maxItems: 1,
-            searchField: 'email',
-            placeholder: this.$filter('translate')('global.start_typing_an_email'),
+            searchField: ['phone', 'email'],
+            placeholder: this.$filter('translate')('global.start_typing_an_email_or_phone'),
             onChange: () => {
                 self.$scope.clientSearch = 0;
             },
@@ -143,7 +225,7 @@ export default class TransactionController {
                 self.$scope.clientSearch = 1;
 
                 self.CustomerService.getCustomers(self.ParamsMap.params({
-                        'filter[email]': query,
+                        'filter[emailOrPhone]': query,
                         'filter[silenceQuery]': true
                     }))
                     .then(

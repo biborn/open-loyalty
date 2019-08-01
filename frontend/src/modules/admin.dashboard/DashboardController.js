@@ -1,9 +1,10 @@
 import LevelController from '../admin.levels/LevelController';
 
 export default class DashboardController extends LevelController {
-    constructor($scope, $state, AuthService, LevelService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter, DataService) {
-        super($scope, $state, AuthService, LevelService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter, DataService);
+    constructor($scope, $state, $timeout, AuthService, LevelService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter, DataService) {
+        super($scope, $state, $timeout, AuthService, LevelService, Flash, NgTableParams, $q, ParamsMap, $stateParams, EditableMap, Validation, $filter, DataService);
 
+        this.AuthService = AuthService;
         this.$scope.stats = {};
         this.$scope.charts = {
             registration: {
@@ -66,11 +67,9 @@ export default class DashboardController extends LevelController {
         let promise4 = this.DataService.getDailyRegistrations().then(res => {
             self.$scope.dailyRegistrations = res;
             self.$scope.charts.registration = self._prepareChart(res.plain(), [self.$filter('translate')('admin.dashboard.registrations_label')])
-        })
-
+        });
         let promise5 = this.DataService.getReferralStats().then(res => {
             self.$scope.stats.referral = res;
-            console.log(self.$scope.stats.referral);
         });
 
         self.$q.all([promise1, promise2, promise3, promise4, promise5])
@@ -84,4 +83,4 @@ export default class DashboardController extends LevelController {
 
 }
 
-DashboardController.$inject = ['$scope', '$state', 'AuthService', 'LevelService', 'Flash', 'NgTableParams', '$q', 'ParamsMap', '$stateParams', 'EditableMap', 'Validation', '$filter', 'DataService'];
+DashboardController.$inject = ['$scope', '$state', '$timeout', 'AuthService', 'LevelService', 'Flash', 'NgTableParams', '$q', 'ParamsMap', '$stateParams', 'EditableMap', 'Validation', '$filter', 'DataService'];

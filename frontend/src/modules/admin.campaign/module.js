@@ -106,7 +106,56 @@ angular.module(MODULE_NAME, [])
                     }
                 }
             })
-
+          .state('admin.redeemed-rewards', {
+              url: "/redeemed-campaigns",
+              views: {
+                'extendTop@': {
+                  templateUrl: 'templates/redeemed-campaigns-extend-top.html',
+                  controller: 'CampaignController',
+                  controllerAs: 'CampaignCtrl'
+                },
+                'main@': {
+                  templateUrl: require('./templates/redeemed-campaigns.html'),
+                  controller: 'CampaignController',
+                  controllerAs: 'CampaignCtrl'
+                },
+                'extendBottom@': {
+                  templateUrl: 'templates/redeemed-campaigns-extend-bottom.html',
+                  controller: 'CampaignController',
+                  controllerAs: 'CampaignCtrl'
+                }
+              }
+          })
+          .state('admin.campaign-category-list', {
+              url: "/campaign-category-list/",
+              views: {
+                  'main@': {
+                      templateUrl: require('./templates/campaign-category-list.html'),
+                      controller: 'CampaignController',
+                      controllerAs: 'CampaignCtrl'
+                  },
+              }
+          })
+          .state('admin.edit-campaign-category', {
+              url: "/edit-campaign-category/:campaignCategoryId",
+              views: {
+                'main@': {
+                  templateUrl: require('./templates/edit-campaign-category.html'),
+                  controller: 'CampaignController',
+                  controllerAs: 'CampaignCtrl'
+                },
+              }
+          })
+          .state('admin.add-campaign-category', {
+              url: "/add-campaign-category",
+              views: {
+                'main@': {
+                  templateUrl: require('./templates/add-campaign-category.html'),
+                  controller: 'CampaignController',
+                  controllerAs: 'CampaignCtrl'
+                },
+              }
+          })
     })
     .run(($templateCache, $http) => {
         let catchErrorTemplate = () => {
@@ -127,6 +176,9 @@ angular.module(MODULE_NAME, [])
 
         $templateCache.put('templates/single-campaign-extend-top.html', '');
         $templateCache.put('templates/single-campaign-extend-bottom.html', '');
+
+        $templateCache.put('templates/redeemed-campaigns-extend-top.html', '');
+        $templateCache.put('templates/redeemed-campaigns-extend-bottom.html', '');
 
         $http.get(`templates/add-campaign.html`)
             .then(
@@ -159,6 +211,38 @@ angular.module(MODULE_NAME, [])
                 }
             )
             .catch(catchErrorTemplate);
+
+        $http.get(`templates/redeemed-campaigns.html`)
+           .then(
+             response => {
+               $templateCache.put('templates/redeemed-campaigns.html', response.data);
+             }
+           )
+           .catch(catchErrorTemplate);
+
+      $http.get(`templates/campaign-category-list.html`)
+          .then(
+              response => {
+                $templateCache.put('templates/campaign-category-list.html', response.data);
+              }
+          )
+          .catch(catchErrorTemplate);
+
+      $http.get(`templates/edit-campaign-category.html`)
+          .then(
+              response => {
+                $templateCache.put('templates/edit-campaign-category.html', response.data);
+              }
+          )
+          .catch(catchErrorTemplate);
+
+      $http.get(`templates/add-campaign-category.html`)
+          .then(
+              response => {
+                $templateCache.put('templates/add-campaign-category.html', response.data);
+              }
+          )
+          .catch(catchErrorTemplate);
     })
     .controller('CampaignController', CampaignController)
     .service('CampaignService', CampaignService);
